@@ -44,39 +44,6 @@ function isOfflineError(error: unknown): boolean {
   return false;
 }
 
-// 타임아웃이 있는 Promise
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-    ),
-  ]);
-}
-
-// 재시도 로직이 있는 fetch 함수
-async function fetchWithRetry<T>(
-  fetchFn: () => Promise<T>,
-  maxRetries: number = 2,
-  delay: number = 500,
-  timeout: number = 5000
-): Promise<T> {
-  let lastError: unknown;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await withTimeout(fetchFn(), timeout);
-    } catch (err) {
-      lastError = err;
-      if ((isOfflineError(err) || (err instanceof Error && err.message === 'Request timeout')) && i < maxRetries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw lastError;
-}
-
 // Task Hook
 export function useTasks() {
   const { user, loading: authLoading } = useAuth();
@@ -95,12 +62,12 @@ export function useTasks() {
 
     try {
       setLoading(true);
-      const fetchedTasks = await fetchWithRetry(() => getUserTasks(user.uid));
+      const fetchedTasks = await getUserTasks(user.uid);
       setTasks(fetchedTasks);
       setError(null);
       setIsOffline(false);
     } catch (err) {
-      if (isOfflineError(err) || (err instanceof Error && err.message === 'Request timeout')) {
+      if (isOfflineError(err)) {
         setIsOffline(true);
         setTasks([]);
         setError('네트워크 연결을 확인해주세요.');
@@ -187,12 +154,12 @@ export function useDocuments() {
 
     try {
       setLoading(true);
-      const fetchedDocs = await fetchWithRetry(() => getUserDocuments(user.uid));
+      const fetchedDocs = await getUserDocuments(user.uid);
       setDocuments(fetchedDocs);
       setError(null);
       setIsOffline(false);
     } catch (err) {
-      if (isOfflineError(err) || (err instanceof Error && err.message === 'Request timeout')) {
+      if (isOfflineError(err)) {
         setIsOffline(true);
         setDocuments([]);
         setError('네트워크 연결을 확인해주세요.');
@@ -276,12 +243,12 @@ export function useCalendarEvents() {
 
     try {
       setLoading(true);
-      const fetchedEvents = await fetchWithRetry(() => getUserCalendarEvents(user.uid));
+      const fetchedEvents = await getUserCalendarEvents(user.uid);
       setEvents(fetchedEvents);
       setError(null);
       setIsOffline(false);
     } catch (err) {
-      if (isOfflineError(err) || (err instanceof Error && err.message === 'Request timeout')) {
+      if (isOfflineError(err)) {
         setIsOffline(true);
         setEvents([]);
         setError('네트워크 연결을 확인해주세요.');
@@ -482,12 +449,12 @@ export function useUserSettings() {
 
     try {
       setLoading(true);
-      const fetchedSettings = await fetchWithRetry(() => getUserSettings(user.uid));
+      const fetchedSettings = await getUserSettings(user.uid);
       setSettings(fetchedSettings);
       setError(null);
     } catch (err) {
-      // 타임아웃 또는 오프라인 에러시 빈 설정 반환 (로딩 무한 방지)
-      if (isOfflineError(err) || (err instanceof Error && err.message === 'Request timeout')) {
+      // 오프라인 에러시 빈 설정 반환 (로딩 무한 방지)
+      if (isOfflineError(err)) {
         setSettings(null);
         setError(null);
       } else {

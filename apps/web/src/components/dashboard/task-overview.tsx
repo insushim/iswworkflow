@@ -43,8 +43,27 @@ export function TaskOverview() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          {/* Skeleton Stats */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="text-center p-3 rounded-lg bg-accent/50 animate-pulse">
+                <div className="h-8 w-12 bg-muted rounded mx-auto mb-1" />
+                <div className="h-3 w-10 bg-muted rounded mx-auto" />
+              </div>
+            ))}
+          </div>
+          {/* Skeleton Tasks */}
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 p-3 rounded-lg border animate-pulse">
+                <div className="h-2 w-2 rounded-full bg-muted" />
+                <div className="flex-1">
+                  <div className="h-4 w-3/4 bg-muted rounded mb-2" />
+                  <div className="h-3 w-1/4 bg-muted rounded" />
+                </div>
+                <div className="w-20 h-2 bg-muted rounded" />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

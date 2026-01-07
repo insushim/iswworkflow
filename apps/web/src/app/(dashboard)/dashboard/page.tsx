@@ -23,10 +23,26 @@ export default function DashboardPage() {
     return '선생님';
   };
 
-  if (authLoading || settingsLoading) {
+  // 인증 로딩 중에도 스켈레톤 UI 표시 (빠른 로딩 경험)
+  if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        {/* Skeleton Welcome */}
+        <div className="space-y-2 animate-pulse">
+          <div className="h-8 w-64 bg-muted rounded" />
+          <div className="h-4 w-96 bg-muted rounded" />
+        </div>
+        {/* Skeleton Grid */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="h-24 bg-muted rounded-lg animate-pulse" />
+            <div className="h-80 bg-muted rounded-lg animate-pulse" />
+          </div>
+          <div className="space-y-6">
+            <div className="h-48 bg-muted rounded-lg animate-pulse" />
+            <div className="h-48 bg-muted rounded-lg animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }

@@ -158,9 +158,39 @@ export default function TasksPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">업무를 불러오는 중...</span>
+      <div className="space-y-6">
+        {/* Skeleton Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2 animate-pulse">
+            <div className="h-8 w-32 bg-muted rounded" />
+            <div className="h-4 w-48 bg-muted rounded" />
+          </div>
+          <div className="h-10 w-32 bg-muted rounded animate-pulse" />
+        </div>
+        {/* Skeleton Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />
+          ))}
+        </div>
+        {/* Skeleton Filters */}
+        <div className="h-16 bg-muted rounded-lg animate-pulse" />
+        {/* Skeleton List */}
+        <div className="space-y-3 p-4 border rounded-lg">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-4 border rounded-lg animate-pulse">
+              <div className="h-5 w-5 rounded-full bg-muted" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-3/4 bg-muted rounded" />
+                <div className="h-3 w-1/2 bg-muted rounded" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-8 w-8 bg-muted rounded" />
+                <div className="h-8 w-8 bg-muted rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

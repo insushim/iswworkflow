@@ -1,60 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAllCalendarEvents, createCalendarEventAdmin, Timestamp } from '@/lib/firebase-admin';
 
-// Mock calendar events
-const mockEvents = [
-  {
-    id: 'e1',
-    title: '개학식',
-    description: '2024학년도 1학기 개학',
-    startDate: '2024-03-04T09:00:00',
-    endDate: '2024-03-04T10:00:00',
-    isAllDay: false,
-    location: '운동장',
-    type: { name: 'ceremony', nameKo: '의식행사' },
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'e2',
-    title: '교직원 회의',
-    description: '주간 교직원 회의',
-    startDate: '2024-03-04T15:00:00',
-    endDate: '2024-03-04T16:00:00',
-    isAllDay: false,
-    location: '교무실',
-    type: { name: 'meeting', nameKo: '회의' },
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'e3',
-    title: '학부모 상담 주간',
-    description: '1학기 학부모 상담 주간',
-    startDate: '2024-03-18T00:00:00',
-    endDate: '2024-03-22T23:59:59',
-    isAllDay: true,
-    location: '각 교실',
-    type: { name: 'counseling', nameKo: '상담' },
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'e4',
-    title: '학교교육계획 마감',
-    description: '3월 학교교육계획 제출 마감',
-    startDate: '2024-03-08T18:00:00',
-    isAllDay: false,
-    type: { name: 'deadline', nameKo: '마감' },
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'e5',
-    title: '삼일절',
-    description: '3·1절 공휴일',
-    startDate: '2024-03-01T00:00:00',
-    endDate: '2024-03-01T23:59:59',
-    isAllDay: true,
-    type: { name: 'holiday', nameKo: '공휴일' },
-    status: 'SCHEDULED',
-  },
-];
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,36 +10,29 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const type = searchParams.get('type');
 
-    let filteredEvents = [...mockEvents];
+    const filters: {
+      startDate?: string;
+      endDate?: string;
+      type?: string;
+    } = {};
 
-    if (startDate) {
-      const start = new Date(startDate);
-      filteredEvents = filteredEvents.filter(
-        (event) => new Date(event.startDate) >= start
-      );
-    }
+    if (startDate) filters.startDate = startDate;
+    if (endDate) filters.endDate = endDate;
+    if (type) filters.type = type;
 
-    if (endDate) {
-      const end = new Date(endDate);
-      filteredEvents = filteredEvents.filter(
-        (event) => new Date(event.startDate) <= end
-      );
-    }
+    const events = await getAllCalendarEvents(filters);
 
-    if (type) {
-      filteredEvents = filteredEvents.filter(
-        (event) => event.type.name === type
-      );
-    }
-
-    // Sort by start date
-    filteredEvents.sort(
-      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-    );
+    // 형식 변환 (Timestamp -> ISO string)
+    const formattedEvents = events.map((event) => ({
+      ...event,
+      startDate: event.startDate?.toDate().toISOString() || null,
+      endDate: event.endDate?.toDate().toISOString() || null,
+      createdAt: event.createdAt?.toDate().toISOString() || null,
+    }));
 
     return NextResponse.json({
-      events: filteredEvents,
-      total: filteredEvents.length,
+      events: formattedEvents,
+      total: formattedEvents.length,
     });
   } catch (error) {
     console.error('Calendar API Error:', error);
@@ -107,24 +47,31 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { title, startDate, typeId } = body;
-    if (!title || !startDate || !typeId) {
+    const { title, startDate, type, userId } = body;
+    if (!title || !startDate || !type) {
       return NextResponse.json(
         { error: '제목, 시작일, 유형은 필수입니다.' },
         { status: 400 }
       );
     }
 
-    const newEvent = {
-      id: `event_${Date.now()}`,
-      ...body,
-      status: 'SCHEDULED',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    const eventData = {
+      userId: userId || 'anonymous',
+      title,
+      description: body.description || '',
+      startDate: Timestamp.fromDate(new Date(startDate)),
+      endDate: body.endDate ? Timestamp.fromDate(new Date(body.endDate)) : null,
+      time: body.time || '',
+      location: body.location || '',
+      type: type as 'deadline' | 'meeting' | 'event' | 'reminder' | 'holiday',
+      priority: (body.priority?.toLowerCase() || 'medium') as 'high' | 'medium' | 'low',
+      isCompleted: body.isCompleted || false,
     };
 
+    const eventId = await createCalendarEventAdmin(eventData);
+
     return NextResponse.json({
-      event: newEvent,
+      event: { id: eventId, ...eventData },
       message: '일정이 성공적으로 등록되었습니다.',
     });
   } catch (error) {

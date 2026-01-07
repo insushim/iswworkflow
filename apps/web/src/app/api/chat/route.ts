@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Gemini 클라이언트 초기화
+    // Gemini 클라이언트 초기화 (Gemini 2.5 Flash-Lite - 빠르고 비용 효율적)
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     // 이전 대화 기록 준비 (마지막 메시지 제외)
     const history = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({

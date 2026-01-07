@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
@@ -16,9 +15,10 @@ import {
   Copy,
   ThumbsUp,
   ThumbsDown,
-  RefreshCw,
   Trash2,
+  ChevronDown,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -40,14 +40,61 @@ export default function AIChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevMessagesLengthRef = useRef(0);
 
+  // 스크롤 위치 체크
+  const checkScrollPosition = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const atBottom = distanceFromBottom < 100;
+
+    setIsAtBottom(atBottom);
+    setShowScrollButton(!atBottom && messages.length > 0);
+  }, [messages.length]);
+
+  // 스크롤 이벤트 리스너
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', checkScrollPosition);
+    return () => container.removeEventListener('scroll', checkScrollPosition);
+  }, [checkScrollPosition]);
+
+  // 새 메시지가 추가될 때만 자동 스크롤 (사용자가 맨 아래에 있을 때만)
+  useEffect(() => {
+    const isNewMessage = messages.length > prevMessagesLengthRef.current;
+    prevMessagesLengthRef.current = messages.length;
+
+    // 새 메시지가 추가되고 사용자가 맨 아래에 있을 때만 스크롤
+    if (isNewMessage && isAtBottom) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
     }
-  }, [messages]);
+  }, [messages.length, isAtBottom]);
+
+  // 로딩 중일 때 스크롤 (사용자가 맨 아래에 있을 때만)
+  useEffect(() => {
+    if (isLoading && isAtBottom) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    }
+  }, [isLoading, isAtBottom]);
+
+  // 맨 아래로 스크롤하는 함수
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -156,7 +203,10 @@ export default function AIChatPage() {
       <Card className="flex-1 flex flex-col overflow-hidden">
         <CardContent className="flex-1 flex flex-col p-0">
           {/* Messages */}
-          <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto p-4 relative"
+          >
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8">
                 <div className="p-4 rounded-full bg-primary/10 mb-4">
@@ -255,9 +305,21 @@ export default function AIChatPage() {
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             )}
-          </ScrollArea>
+
+            {/* 맨 아래로 스크롤 버튼 */}
+            {showScrollButton && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-4 right-4 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all z-10"
+                aria-label="맨 아래로 스크롤"
+              >
+                <ChevronDown className="h-5 w-5" />
+              </button>
+            )}
+          </div>
 
           {/* Input */}
           <div className="p-4 border-t">

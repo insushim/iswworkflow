@@ -10,9 +10,10 @@ export function isGeminiConfigured(): boolean {
 const apiKey = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
-export const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+// Gemini 2.5 Flash-Lite - 빠르고 비용 효율적인 모델
+export const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
-export const geminiProModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+export const geminiProModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
 // 초등교사 업무 전문 시스템 프롬프트
 export const TEACHER_SYSTEM_PROMPT = `당신은 대한민국 초등학교 교사를 위한 전문 AI 비서 '에듀플로우'입니다.

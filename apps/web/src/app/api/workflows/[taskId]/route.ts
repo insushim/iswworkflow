@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkflowById, getAllWorkflows } from '@/lib/firebase-admin';
 
-// Mock workflows data
-const mockWorkflows: Record<string, {
+export const runtime = 'nodejs';
+
+// 기본 워크플로우 데이터 (Firebase에 데이터가 없을 경우 사용)
+const defaultWorkflows: Record<string, {
   id: string;
   taskId: string;
   title: string;
@@ -175,16 +178,42 @@ export async function GET(
   try {
     const { taskId } = await params;
 
-    const workflow = mockWorkflows[taskId];
+    // 먼저 Firebase에서 워크플로우 조회 시도
+    const firebaseWorkflow = await getWorkflowById(taskId);
 
-    if (!workflow) {
-      return NextResponse.json(
-        { error: '해당 업무의 워크플로우를 찾을 수 없습니다.' },
-        { status: 404 }
-      );
+    if (firebaseWorkflow) {
+      // Firebase 워크플로우 형식 변환
+      const workflow = {
+        id: firebaseWorkflow.id,
+        taskId: taskId,
+        title: firebaseWorkflow.title,
+        description: firebaseWorkflow.description,
+        estimatedTime: parseInt(firebaseWorkflow.estimatedTime) || 60,
+        steps: firebaseWorkflow.steps.map((step, index) => ({
+          order: step.order || index + 1,
+          title: step.title,
+          description: step.description,
+          checkItems: step.checkItems || [],
+          tips: step.tips || [],
+          warnings: step.warnings || [],
+          estimatedTime: step.estimatedTime || 30,
+        })),
+      };
+
+      return NextResponse.json({ workflow });
     }
 
-    return NextResponse.json({ workflow });
+    // Firebase에 없으면 기본 워크플로우 데이터 사용
+    const defaultWorkflow = defaultWorkflows[taskId];
+
+    if (defaultWorkflow) {
+      return NextResponse.json({ workflow: defaultWorkflow });
+    }
+
+    return NextResponse.json(
+      { error: '해당 업무의 워크플로우를 찾을 수 없습니다.' },
+      { status: 404 }
+    );
   } catch (error) {
     console.error('Workflow API Error:', error);
     return NextResponse.json(
