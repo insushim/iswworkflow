@@ -10,15 +10,15 @@ import {
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 
-// Firebase 설정 - 환경변수 또는 폴백 값 사용
+// Firebase 설정 - 환경변수만 사용 (보안을 위해 하드코딩된 값 절대 사용 금지)
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyA8uPtemRMg_o77I8odhi7cgNtUG073rgw',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'isw-workflow.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'isw-workflow',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'isw-workflow.firebasestorage.app',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '490724005964',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:490724005964:web:e8ed6788a5faf617697ce9',
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-KVCT3V323F',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
 };
 
 let app: FirebaseApp;
@@ -68,12 +68,13 @@ try {
   storage = getStorage(app);
 }
 
-// Firebase 연결 상태 확인
+// Firebase 연결 상태 확인 - 환경변수가 제대로 설정되었는지 검증
 export function isFirebaseConfigured(): boolean {
   return Boolean(
     firebaseConfig.apiKey &&
+    firebaseConfig.apiKey.length > 10 &&
     firebaseConfig.projectId &&
-    firebaseConfig.apiKey !== 'undefined'
+    firebaseConfig.projectId.length > 0
   );
 }
 
