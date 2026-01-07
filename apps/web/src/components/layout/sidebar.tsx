@@ -8,7 +8,6 @@ import {
   CheckSquare,
   FileText,
   Calendar,
-  MessageSquare,
   Settings,
   BookOpen,
   Search,
@@ -21,7 +20,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, memo, useCallback, useMemo } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -63,9 +62,13 @@ const navigation = [
   },
 ];
 
-export function Sidebar() {
+function SidebarComponent() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed(prev => !prev);
+  }, []);
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -183,7 +186,7 @@ export function Sidebar() {
             variant="ghost"
             size="sm"
             className="mt-2 w-full justify-center"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={toggleCollapsed}
           >
             {collapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -199,3 +202,6 @@ export function Sidebar() {
     </TooltipProvider>
   );
 }
+
+// React.memo로 불필요한 리렌더링 방지
+export const Sidebar = memo(SidebarComponent);

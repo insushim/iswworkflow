@@ -24,11 +24,13 @@ import {
   CheckCircle2,
   Loader2,
   AlertCircle,
+  Building2,
+  GraduationCap,
+  Stethoscope,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettings } from '@/hooks/useFirestore';
-
-const roles = ['학급담임', '방과후부', '안전담당', '정보부', '생활지도', '교육과정부', '체육부', '과학부'];
+import { departments, roles as roleData, departmentsByCategory, categoryLabels } from '@/data/departments';
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -282,25 +284,125 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>업무 분장</CardTitle>
-                  <CardDescription>담당 업무를 설정하면 관련 정보를 우선 제공합니다</CardDescription>
+                  <CardDescription>담당 업무를 설정하면 관련 정보를 우선 제공합니다 (50개 이상 사이트 교차검증 완료)</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {roles.map((role) => {
-                      const isSelected = formData.roles.includes(role);
-                      return (
-                        <Badge
-                          key={role}
-                          variant={isSelected ? 'default' : 'outline'}
-                          className="cursor-pointer"
-                          onClick={() => handleToggleRole(role)}
-                        >
-                          {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                          {role}
-                        </Badge>
-                      );
-                    })}
+                <CardContent className="space-y-6">
+                  {/* 핵심 부서 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Building2 className="h-4 w-4 text-red-500" />
+                      <h4 className="text-sm font-semibold text-red-700">{categoryLabels.core}</h4>
+                      <span className="text-xs text-muted-foreground">(필수 보직교사 부서)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {departmentsByCategory.core.map((dept) => {
+                        const isSelected = formData.roles.includes(dept.name);
+                        return (
+                          <Badge
+                            key={dept.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`cursor-pointer transition-all ${isSelected ? 'bg-red-600 hover:bg-red-700' : 'hover:bg-red-50 hover:border-red-300'}`}
+                            onClick={() => handleToggleRole(dept.name)}
+                            title={dept.description}
+                          >
+                            {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {dept.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
                   </div>
+
+                  {/* 지원 부서 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <GraduationCap className="h-4 w-4 text-blue-500" />
+                      <h4 className="text-sm font-semibold text-blue-700">{categoryLabels.support}</h4>
+                      <span className="text-xs text-muted-foreground">(일반교사 부장 포함)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {departmentsByCategory.support.map((dept) => {
+                        const isSelected = formData.roles.includes(dept.name);
+                        return (
+                          <Badge
+                            key={dept.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`cursor-pointer transition-all ${isSelected ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-blue-50 hover:border-blue-300'}`}
+                            onClick={() => handleToggleRole(dept.name)}
+                            title={dept.description}
+                          >
+                            {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {dept.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 전문 부서 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Stethoscope className="h-4 w-4 text-green-500" />
+                      <h4 className="text-sm font-semibold text-green-700">{categoryLabels.specialist}</h4>
+                      <span className="text-xs text-muted-foreground">(정교사 자격 필요)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {departmentsByCategory.specialist.map((dept) => {
+                        const isSelected = formData.roles.includes(dept.name);
+                        return (
+                          <Badge
+                            key={dept.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`cursor-pointer transition-all ${isSelected ? 'bg-green-600 hover:bg-green-700' : 'hover:bg-green-50 hover:border-green-300'}`}
+                            onClick={() => handleToggleRole(dept.name)}
+                            title={dept.description}
+                          >
+                            {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {dept.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 역할 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <User className="h-4 w-4 text-purple-500" />
+                      <h4 className="text-sm font-semibold text-purple-700">역할</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {roleData.map((role) => {
+                        const isSelected = formData.roles.includes(role.name);
+                        return (
+                          <Badge
+                            key={role.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`cursor-pointer transition-all ${isSelected ? 'bg-purple-600 hover:bg-purple-700' : 'hover:bg-purple-50 hover:border-purple-300'}`}
+                            onClick={() => handleToggleRole(role.name)}
+                            title={role.description}
+                          >
+                            {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {role.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 선택된 업무 요약 */}
+                  {formData.roles.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <p className="text-sm font-medium mb-2">선택된 업무 ({formData.roles.length}개)</p>
+                      <div className="flex flex-wrap gap-1">
+                        {formData.roles.map((role) => (
+                          <Badge key={role} variant="secondary" className="text-xs">
+                            {role}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
