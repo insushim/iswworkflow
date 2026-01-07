@@ -1,0 +1,782 @@
+// ===========================================
+// EduFlow AI - Prisma Schema
+// ===========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ===========================================
+// User & Authentication
+// ===========================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  password      String?
+  emailVerified DateTime?
+  role          UserRole  @default(TEACHER)
+
+  // Profile
+  phone         String?
+  position      String?   // 직위: 교사, 부장교사, 교감, 교장
+  gradeInCharge Int?      // 담당학년
+  classInCharge Int?      // 담당반
+  subjects      String[]  // 담당과목
+
+  // School relation
+  schoolId      String?
+  school        School?   @relation(fields: [schoolId], references: [id])
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  tasks         UserTask[]
+  documents     Document[]
+  events        Event[]
+  chats         ChatSession[]
+  reminders     Reminder[]
+  bookmarks     Bookmark[]
+
+  // Settings
+  settings      Json?     @default("{}")
+  preferences   Json?     @default("{}")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([schoolId])
+  @@index([email])
+}
+
+enum UserRole {
+  ADMIN
+  PRINCIPAL    // 교장
+  VICE_PRINCIPAL // 교감
+  HEAD_TEACHER // 부장교사
+  TEACHER      // 일반교사
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ===========================================
+// School
+// ===========================================
+
+model School {
+  id              String   @id @default(cuid())
+  neisCode        String   @unique  // NEIS 학교코드
+  name            String
+  nameEn          String?
+  type            SchoolType
+  address         String?
+  zipCode         String?
+  phone           String?
+  fax             String?
+  website         String?
+  foundedDate     DateTime?
+
+  // Location
+  region          String?   // 시도
+  district        String?   // 시군구
+
+  // Statistics
+  totalStudents   Int?
+  totalTeachers   Int?
+  totalClasses    Int?
+
+  // Relations
+  users           User[]
+  tasks           Task[]
+  events          Event[]
+  documents       Document[]
+  academicCalendar AcademicCalendarEntry[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([neisCode])
+  @@index([region, district])
+}
+
+enum SchoolType {
+  ELEMENTARY  // 초등학교
+  MIDDLE      // 중학교
+  HIGH        // 고등학교
+  SPECIAL     // 특수학교
+}
+
+// ===========================================
+// Tasks & Workflows
+// ===========================================
+
+model TaskCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  nameKo      String   // 한글 이름
+  description String?
+  icon        String?
+  color       String?
+  order       Int      @default(0)
+
+  tasks       Task[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?  @db.Text
+  content         String?  @db.Text
+
+  // Categorization
+  categoryId      String
+  category        TaskCategory @relation(fields: [categoryId], references: [id])
+
+  // Timing
+  month           Int?     // 1-12, null for year-round
+  startMonth      Int?
+  endMonth        Int?
+  isRecurring     Boolean  @default(false)
+  recurringType   RecurringType?
+
+  // Priority & Status
+  priority        Priority @default(MEDIUM)
+  estimatedHours  Float?
+
+  // Target
+  targetGrades    Int[]    // 대상 학년 (1-6)
+  targetPositions String[] // 대상 직위
+
+  // School specific
+  schoolId        String?
+  school          School?  @relation(fields: [schoolId], references: [id])
+
+  // Source
+  source          String?  // 출처 (교육청, 커뮤니티 등)
+  sourceUrl       String?
+  isVerified      Boolean  @default(false)
+  verifiedCount   Int      @default(0)
+
+  // Relations
+  workflow        Workflow?
+  userTasks       UserTask[]
+  relatedEvents   Event[]
+  documents       Document[]
+
+  // Metadata
+  tags            String[]
+  attachments     Json?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([month])
+  @@index([schoolId])
+  @@index([priority])
+}
+
+enum RecurringType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model UserTask {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId      String
+  task        Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  status      TaskStatus @default(PENDING)
+  progress    Int        @default(0)  // 0-100
+
+  startedAt   DateTime?
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  notes       String?    @db.Text
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([userId, taskId])
+  @@index([userId])
+  @@index([taskId])
+  @@index([status])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+}
+
+model Workflow {
+  id          String   @id @default(cuid())
+  taskId      String   @unique
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?  @db.Text
+
+  steps       WorkflowStep[]
+
+  estimatedTime Int?   // 예상 소요 시간 (분)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WorkflowStep {
+  id          String   @id @default(cuid())
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  order       Int
+  title       String
+  description String?  @db.Text
+  content     String?  @db.Text
+
+  // Checklist items for this step
+  checkItems  Json?    // Array of { id, text, isOptional }
+
+  // Related resources
+  relatedDocs String[] // Document template IDs
+  tips        String[] // 팁 목록
+  warnings    String[] // 주의사항
+
+  estimatedTime Int?   // 예상 소요 시간 (분)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workflowId])
+  @@unique([workflowId, order])
+}
+
+// ===========================================
+// Documents
+// ===========================================
+
+model DocumentType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  nameKo      String
+  description String?
+  icon        String?
+
+  templates   DocumentTemplate[]
+  documents   Document[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DocumentTemplate {
+  id            String   @id @default(cuid())
+  typeId        String
+  type          DocumentType @relation(fields: [typeId], references: [id])
+
+  name          String
+  description   String?
+
+  // Template content
+  content       String   @db.Text
+  structure     Json?    // Document structure/schema
+
+  // Variables that can be filled
+  variables     Json?    // Array of { name, type, description, required }
+
+  // Example
+  example       String?  @db.Text
+
+  // Metadata
+  source        String?
+  version       String   @default("1.0")
+  isOfficial    Boolean  @default(false)
+  usageCount    Int      @default(0)
+
+  documents     Document[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([typeId])
+}
+
+model Document {
+  id            String   @id @default(cuid())
+
+  // Author
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+
+  // Type & Template
+  typeId        String
+  type          DocumentType @relation(fields: [typeId], references: [id])
+  templateId    String?
+  template      DocumentTemplate? @relation(fields: [templateId], references: [id])
+
+  // Content
+  title         String
+  content       String   @db.Text
+
+  // Related
+  schoolId      String?
+  school        School?  @relation(fields: [schoolId], references: [id])
+  taskId        String?
+  task          Task?    @relation(fields: [taskId], references: [id])
+
+  // Status
+  status        DocumentStatus @default(DRAFT)
+
+  // Metadata
+  metadata      Json?
+  tags          String[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([typeId])
+  @@index([schoolId])
+}
+
+enum DocumentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+// ===========================================
+// Events & Calendar
+// ===========================================
+
+model EventType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  nameKo      String
+  description String?
+  icon        String?
+  color       String?
+
+  templates   EventTemplate[]
+  events      Event[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EventTemplate {
+  id            String   @id @default(cuid())
+  typeId        String
+  type          EventType @relation(fields: [typeId], references: [id])
+
+  name          String
+  description   String?  @db.Text
+
+  // Default settings
+  defaultDuration Int?   // 분
+  defaultLocation String?
+
+  // Checklist template
+  checklist     Json?    // Array of { category, items: [{ text, isRequired }] }
+
+  // Preparation timeline
+  preparation   Json?    // Array of { daysBeforeEvent, tasks: [...] }
+
+  // Related documents
+  relatedDocs   String[] // Document template IDs
+
+  // Tips
+  tips          String[]
+
+  usageCount    Int      @default(0)
+
+  events        Event[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([typeId])
+}
+
+model Event {
+  id            String   @id @default(cuid())
+
+  // Creator
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+
+  // Type & Template
+  typeId        String
+  type          EventType @relation(fields: [typeId], references: [id])
+  templateId    String?
+  template      EventTemplate? @relation(fields: [templateId], references: [id])
+
+  // Basic info
+  title         String
+  description   String?  @db.Text
+
+  // Timing
+  startDate     DateTime
+  endDate       DateTime?
+  isAllDay      Boolean  @default(false)
+
+  // Location
+  location      String?
+
+  // School & Task
+  schoolId      String?
+  school        School?  @relation(fields: [schoolId], references: [id])
+  taskId        String?
+  task          Task?    @relation(fields: [taskId], references: [id])
+
+  // Status
+  status        EventStatus @default(SCHEDULED)
+
+  // Checklist progress
+  checklist     Json?    // Array of { id, text, isCompleted }
+  checklistProgress Int  @default(0)  // 0-100
+
+  // Reminders
+  reminders     Reminder[]
+
+  // Metadata
+  metadata      Json?
+  tags          String[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([typeId])
+  @@index([schoolId])
+  @@index([startDate])
+}
+
+enum EventStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+model Reminder {
+  id          String   @id @default(cuid())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  eventId     String?
+  event       Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  title       String
+  message     String?
+
+  remindAt    DateTime
+  isSent      Boolean  @default(false)
+  sentAt      DateTime?
+
+  type        ReminderType @default(NOTIFICATION)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([remindAt])
+}
+
+enum ReminderType {
+  NOTIFICATION
+  EMAIL
+  SMS
+}
+
+// ===========================================
+// Academic Calendar
+// ===========================================
+
+model AcademicCalendarEntry {
+  id          String   @id @default(cuid())
+
+  schoolId    String?
+  school      School?  @relation(fields: [schoolId], references: [id])
+
+  title       String
+  description String?
+
+  startDate   DateTime
+  endDate     DateTime?
+
+  type        CalendarEntryType
+
+  // Target
+  targetGrades Int[]   // 대상 학년
+  isNational   Boolean @default(false)  // 전국 공통 여부
+
+  // Source
+  source       String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([startDate])
+  @@index([type])
+}
+
+enum CalendarEntryType {
+  SEMESTER_START    // 학기 시작
+  SEMESTER_END      // 학기 종료
+  VACATION_START    // 방학 시작
+  VACATION_END      // 방학 종료
+  EXAM              // 시험
+  EVENT             // 행사
+  HOLIDAY           // 공휴일
+  CEREMONY          // 기념일
+  DEADLINE          // 마감일
+  OTHER
+}
+
+// ===========================================
+// AI Chat
+// ===========================================
+
+model ChatSession {
+  id          String   @id @default(cuid())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String?
+
+  // Context
+  context     Json?    // Current session context
+
+  messages    ChatMessage[]
+
+  isArchived  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+
+  sessionId   String
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role        MessageRole
+  content     String   @db.Text
+
+  // Metadata
+  metadata    Json?    // tokens used, model, etc.
+
+  // Feedback
+  feedback    MessageFeedback?
+
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum MessageFeedback {
+  HELPFUL
+  NOT_HELPFUL
+}
+
+// ===========================================
+// Community Sources
+// ===========================================
+
+model CommunitySource {
+  id          String   @id @default(cuid())
+
+  name        String
+  url         String   @unique
+  description String?
+
+  type        SourceType
+
+  // Scraping config
+  isActive    Boolean  @default(true)
+  lastScraped DateTime?
+  scrapeInterval Int   @default(86400)  // seconds
+
+  // Stats
+  totalPosts  Int      @default(0)
+
+  resources   CommunityResource[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum SourceType {
+  FORUM
+  BLOG
+  CAFE
+  OFFICIAL
+  YOUTUBE
+  OTHER
+}
+
+model CommunityResource {
+  id          String   @id @default(cuid())
+
+  sourceId    String
+  source      CommunitySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  title       String
+  url         String   @unique
+  content     String?  @db.Text
+  summary     String?  @db.Text
+
+  author      String?
+  publishedAt DateTime?
+
+  // Categorization
+  category    String?
+  tags        String[]
+
+  // Quality
+  viewCount   Int      @default(0)
+  likeCount   Int      @default(0)
+  commentCount Int     @default(0)
+
+  // Embeddings for semantic search
+  embedding   Float[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sourceId])
+  @@index([category])
+}
+
+// ===========================================
+// Bookmarks & Favorites
+// ===========================================
+
+model Bookmark {
+  id          String   @id @default(cuid())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        BookmarkType
+  targetId    String
+
+  note        String?
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, type, targetId])
+  @@index([userId])
+}
+
+enum BookmarkType {
+  TASK
+  DOCUMENT
+  EVENT
+  RESOURCE
+  TEMPLATE
+}
+
+// ===========================================
+// Audit Log
+// ===========================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+
+  userId      String?
+  action      String
+  entity      String
+  entityId    String?
+
+  oldValue    Json?
+  newValue    Json?
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "declaration": true,
+    "declarationMap": true,
+    "composite": false,
+    "baseUrl": ".",
+    "paths": {
+      "@eduflow/database": ["packages/database/src"],
+      "@eduflow/ai-core": ["packages/ai-core/src"],
+      "@eduflow/scraper": ["packages/scraper/src"],
+      "@eduflow/shared": ["packages/shared/src"],
+      "@eduflow/ui": ["packages/ui/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next", ".turbo"]
+}

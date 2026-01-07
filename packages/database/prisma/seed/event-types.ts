@@ -1,0 +1,88 @@
+import { Prisma } from '@prisma/client';
+
+export const eventTypes: Prisma.EventTypeCreateInput[] = [
+  {
+    name: 'ceremony',
+    nameKo: '의식행사',
+    description: '입학식, 졸업식, 종업식 등',
+    icon: 'award',
+    color: '#8B5CF6',
+  },
+  {
+    name: 'athletic',
+    nameKo: '체육행사',
+    description: '운동회, 체육대회, 수련회 등',
+    icon: 'dumbbell',
+    color: '#10B981',
+  },
+  {
+    name: 'cultural',
+    nameKo: '문화예술행사',
+    description: '학예회, 작품전시회, 음악회 등',
+    icon: 'music',
+    color: '#EC4899',
+  },
+  {
+    name: 'academic',
+    nameKo: '학술행사',
+    description: '과학의날, 경시대회, 학술발표 등',
+    icon: 'flask',
+    color: '#3B82F6',
+  },
+  {
+    name: 'field_trip',
+    nameKo: '현장체험학습',
+    description: '현장학습, 수학여행, 견학 등',
+    icon: 'map-pin',
+    color: '#F59E0B',
+  },
+  {
+    name: 'parent',
+    nameKo: '학부모행사',
+    description: '학부모총회, 공개수업, 상담 등',
+    icon: 'users',
+    color: '#6366F1',
+  },
+  {
+    name: 'meeting',
+    nameKo: '회의',
+    description: '교직원회의, 학년협의회 등',
+    icon: 'message-square',
+    color: '#64748B',
+  },
+  {
+    name: 'training',
+    nameKo: '연수',
+    description: '교원연수, 워크숍 등',
+    icon: 'book-open',
+    color: '#0EA5E9',
+  },
+  {
+    name: 'special_day',
+    nameKo: '기념일/계기교육',
+    description: '현충일, 한글날, 어린이날 등',
+    icon: 'calendar-heart',
+    color: '#EF4444',
+  },
+  {
+    name: 'exam',
+    nameKo: '평가',
+    description: '지필평가, 수행평가 등',
+    icon: 'file-check',
+    color: '#A855F7',
+  },
+  {
+    name: 'health',
+    nameKo: '보건행사',
+    description: '건강검진, 예방접종 등',
+    icon: 'heart-pulse',
+    color: '#14B8A6',
+  },
+  {
+    name: 'safety',
+    nameKo: '안전교육',
+    description: '소방훈련, 안전교육 등',
+    icon: 'shield',
+    color: '#F97316',
+  },
+];
