@@ -38,27 +38,22 @@ import {
   StarOff,
   Loader2,
   AlertCircle,
+  FileEdit,
 } from 'lucide-react';
 import { useDocuments } from '@/hooks/useFirestore';
 import { Document } from '@/lib/firebase-db';
 import { Timestamp } from 'firebase/firestore';
+import { DocumentGenerator } from '@/components/document-generator';
+import { documentCategories, popularTemplates } from '@/lib/document-templates';
 
-const documentTypes = ['전체', '가정통신문', '계획서', '보고서', '안내문', '공문', '기타'];
-const categories = ['학급경영', '학부모', '체험학습', '안전', '교육과정', '방과후', '생활기록', '기타'];
-const templates = [
-  { id: '1', name: '학부모 상담 안내문', description: '상담 일정 및 방법 안내' },
-  { id: '2', name: '현장체험학습 안내문', description: '체험학습 일정 및 준비물 안내' },
-  { id: '3', name: '가정통신문 (일반)', description: '일반적인 학교 안내사항' },
-  { id: '4', name: '행사 참여 동의서', description: '행사 참여 동의 및 개인정보 수집 동의' },
-  { id: '5', name: '방과후학교 신청서', description: '방과후학교 프로그램 신청 안내' },
-  { id: '6', name: '돌봄교실 안내문', description: '돌봄교실 운영 안내' },
-];
+const documentTypes = ['전체', '가정통신문', '계획서', '보고서', '안내문', '공문', '동의서', '신청서', '회의록', '기타'];
 
 export default function DocumentsPage() {
   const { documents, loading, error, addDocument, editDocument, removeDocument } = useDocuments();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('전체');
   const [showGenerator, setShowGenerator] = useState(false);
+  const [showTemplateGenerator, setShowTemplateGenerator] = useState(false);
   const [generatePrompt, setGeneratePrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -77,6 +72,19 @@ export default function DocumentsPage() {
     isStarred: false,
     isGenerated: false,
   });
+
+  // 공문서 템플릿 생성 처리
+  const handleTemplateGenerate = async (title: string, content: string, type: string) => {
+    const docType = documentTypes.includes(type) ? type : '공문';
+    await addDocument({
+      title,
+      content,
+      type: docType,
+      status: 'DRAFT',
+      isStarred: false,
+      isGenerated: true,
+    });
+  };
 
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -224,7 +232,7 @@ export default function DocumentsPage() {
         <div>
           <h1 className="text-2xl font-bold">문서 관리</h1>
           <p className="text-muted-foreground">
-            AI로 문서를 자동 생성하고 관리하세요
+            공문서 양식으로 즉시 작성하거나 AI로 생성하세요
           </p>
         </div>
         <div className="flex gap-2">
@@ -232,12 +240,23 @@ export default function DocumentsPage() {
             <Plus className="h-4 w-4 mr-2" />
             새 문서
           </Button>
-          <Button onClick={() => setShowGenerator(true)}>
+          <Button variant="default" onClick={() => setShowTemplateGenerator(true)}>
+            <FileEdit className="h-4 w-4 mr-2" />
+            공문서 작성
+          </Button>
+          <Button variant="secondary" onClick={() => setShowGenerator(true)}>
             <Sparkles className="h-4 w-4 mr-2" />
-            AI 문서 생성
+            AI 생성
           </Button>
         </div>
       </div>
+
+      {/* 공문서 템플릿 생성기 */}
+      <DocumentGenerator
+        isOpen={showTemplateGenerator}
+        onClose={() => setShowTemplateGenerator(false)}
+        onGenerate={handleTemplateGenerate}
+      />
 
       {/* AI Document Generator Modal */}
       {showGenerator && (
@@ -250,18 +269,18 @@ export default function DocumentsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">템플릿 선택</label>
+              <label className="text-sm font-medium mb-2 block">인기 템플릿 선택</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {templates.map((template) => (
+                {popularTemplates.slice(0, 6).map((template) => (
                   <Button
                     key={template.id}
                     variant="outline"
                     className="h-auto py-3 px-4 justify-start text-left"
-                    onClick={() => setGeneratePrompt(`${template.name} 작성해줘`)}
+                    onClick={() => setGeneratePrompt(`${template.title} 작성해줘`)}
                   >
                     <div>
-                      <p className="font-medium text-sm">{template.name}</p>
-                      <p className="text-xs text-muted-foreground">{template.description}</p>
+                      <p className="font-medium text-sm">{template.title}</p>
+                      <p className="text-xs text-muted-foreground">{template.category}</p>
                     </div>
                   </Button>
                 ))}
