@@ -15,8 +15,18 @@ import {
   limit,
   Timestamp,
   serverTimestamp,
+  Firestore,
 } from 'firebase/firestore';
-import { db } from './firebase';
+
+// 지연 로딩을 위한 db getter
+let _db: Firestore | null = null;
+async function getDb(): Promise<Firestore> {
+  if (!_db) {
+    const { getDbInstance } = await import('./firebase');
+    _db = getDbInstance();
+  }
+  return _db;
+}
 
 // 컬렉션 참조
 export const Collections = {
@@ -122,6 +132,7 @@ export interface UserSettings {
 
 // 업무(Task) CRUD
 export async function createTask(userId: string, taskData: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) {
+  const db = await getDb();
   const tasksRef = collection(db, Collections.TASKS);
   const docRef = await addDoc(tasksRef, {
     ...taskData,
@@ -133,6 +144,7 @@ export async function createTask(userId: string, taskData: Omit<Task, 'id' | 'us
 }
 
 export async function getUserTasks(userId: string) {
+  const db = await getDb();
   const tasksRef = collection(db, Collections.TASKS);
   const q = query(
     tasksRef,
@@ -144,6 +156,7 @@ export async function getUserTasks(userId: string) {
 }
 
 export async function updateTask(taskId: string, updates: Partial<Task>) {
+  const db = await getDb();
   const taskRef = doc(db, Collections.TASKS, taskId);
   await updateDoc(taskRef, {
     ...updates,
@@ -152,12 +165,14 @@ export async function updateTask(taskId: string, updates: Partial<Task>) {
 }
 
 export async function deleteTask(taskId: string) {
+  const db = await getDb();
   const taskRef = doc(db, Collections.TASKS, taskId);
   await deleteDoc(taskRef);
 }
 
 // 문서(Document) CRUD
 export async function createDocument(userId: string, docData: Omit<Document, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) {
+  const db = await getDb();
   const docsRef = collection(db, Collections.DOCUMENTS);
   const docRef = await addDoc(docsRef, {
     ...docData,
@@ -169,6 +184,7 @@ export async function createDocument(userId: string, docData: Omit<Document, 'id
 }
 
 export async function getUserDocuments(userId: string) {
+  const db = await getDb();
   const docsRef = collection(db, Collections.DOCUMENTS);
   const q = query(
     docsRef,
@@ -180,6 +196,7 @@ export async function getUserDocuments(userId: string) {
 }
 
 export async function updateDocument(docId: string, updates: Partial<Document>) {
+  const db = await getDb();
   const docRef = doc(db, Collections.DOCUMENTS, docId);
   await updateDoc(docRef, {
     ...updates,
@@ -188,12 +205,14 @@ export async function updateDocument(docId: string, updates: Partial<Document>) 
 }
 
 export async function deleteDocument(docId: string) {
+  const db = await getDb();
   const docRef = doc(db, Collections.DOCUMENTS, docId);
   await deleteDoc(docRef);
 }
 
 // 캘린더 이벤트 CRUD
 export async function createCalendarEvent(userId: string, eventData: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>) {
+  const db = await getDb();
   const eventsRef = collection(db, Collections.CALENDAR_EVENTS);
   const docRef = await addDoc(eventsRef, {
     ...eventData,
@@ -204,28 +223,32 @@ export async function createCalendarEvent(userId: string, eventData: Omit<Calend
 }
 
 export async function getUserCalendarEvents(userId: string) {
+  const db = await getDb();
   const eventsRef = collection(db, Collections.CALENDAR_EVENTS);
   const q = query(
     eventsRef,
     where('userId', '==', userId),
-    orderBy('date', 'asc')
+    orderBy('createdAt', 'desc')
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as CalendarEvent));
 }
 
 export async function updateCalendarEvent(eventId: string, updates: Partial<CalendarEvent>) {
+  const db = await getDb();
   const eventRef = doc(db, Collections.CALENDAR_EVENTS, eventId);
   await updateDoc(eventRef, updates);
 }
 
 export async function deleteCalendarEvent(eventId: string) {
+  const db = await getDb();
   const eventRef = doc(db, Collections.CALENDAR_EVENTS, eventId);
   await deleteDoc(eventRef);
 }
 
 // 채팅 기록 저장
 export async function saveChatMessage(userId: string, role: 'user' | 'assistant', content: string) {
+  const db = await getDb();
   const chatRef = collection(db, Collections.CHAT_HISTORY);
   await addDoc(chatRef, {
     userId,
@@ -236,6 +259,7 @@ export async function saveChatMessage(userId: string, role: 'user' | 'assistant'
 }
 
 export async function getUserChatHistory(userId: string, limitCount: number = 50) {
+  const db = await getDb();
   const chatRef = collection(db, Collections.CHAT_HISTORY);
   const q = query(
     chatRef,
@@ -249,6 +273,7 @@ export async function getUserChatHistory(userId: string, limitCount: number = 50
 
 // 워크플로우 CRUD
 export async function getWorkflows() {
+  const db = await getDb();
   const workflowsRef = collection(db, Collections.WORKFLOWS);
   const q = query(workflowsRef, orderBy('category', 'asc'));
   const snapshot = await getDocs(q);
@@ -256,6 +281,7 @@ export async function getWorkflows() {
 }
 
 export async function getWorkflow(workflowId: string) {
+  const db = await getDb();
   const workflowRef = doc(db, Collections.WORKFLOWS, workflowId);
   const snapshot = await getDoc(workflowRef);
   if (snapshot.exists()) {
@@ -266,6 +292,7 @@ export async function getWorkflow(workflowId: string) {
 
 // 워크플로우 진행 상태
 export async function getUserWorkflowProgress(userId: string) {
+  const db = await getDb();
   const progressRef = collection(db, Collections.WORKFLOW_PROGRESS);
   const q = query(progressRef, where('userId', '==', userId));
   const snapshot = await getDocs(q);
@@ -273,6 +300,7 @@ export async function getUserWorkflowProgress(userId: string) {
 }
 
 export async function getWorkflowProgress(userId: string, workflowId: string) {
+  const db = await getDb();
   const progressRef = collection(db, Collections.WORKFLOW_PROGRESS);
   const q = query(
     progressRef,
@@ -292,6 +320,7 @@ export async function createOrUpdateWorkflowProgress(
   completedSteps: string[],
   totalSteps: number
 ) {
+  const db = await getDb();
   const existing = await getWorkflowProgress(userId, workflowId);
 
   if (existing) {
@@ -318,6 +347,7 @@ export async function createOrUpdateWorkflowProgress(
 
 // 사용자 설정
 export async function getUserSettings(userId: string) {
+  const db = await getDb();
   const settingsRef = doc(db, Collections.USER_SETTINGS, userId);
   const snapshot = await getDoc(settingsRef);
   if (snapshot.exists()) {
@@ -327,6 +357,7 @@ export async function getUserSettings(userId: string) {
 }
 
 export async function saveUserSettings(userId: string, settings: Partial<UserSettings>) {
+  const db = await getDb();
   const settingsRef = doc(db, Collections.USER_SETTINGS, userId);
   await setDoc(settingsRef, {
     ...settings,
@@ -337,6 +368,7 @@ export async function saveUserSettings(userId: string, settings: Partial<UserSet
 
 // 초기 워크플로우 데이터 생성 (관리자용)
 export async function initializeWorkflows() {
+  const db = await getDb();
   const workflows = [
     {
       title: '학급경영록 작성',
@@ -370,72 +402,6 @@ export async function initializeWorkflows() {
         { id: 'step6', title: '후속 조치', description: '필요한 후속 조치를 진행합니다', order: 6 },
       ],
       estimatedTime: '45분',
-      difficulty: 'easy',
-    },
-    {
-      title: '현장체험학습 계획',
-      description: '장소 선정부터 결과 보고서 작성까지',
-      category: '행사',
-      totalSteps: 10,
-      steps: [
-        { id: 'step1', title: '장소 선정', description: '체험학습 장소를 선정합니다', order: 1 },
-        { id: 'step2', title: '사전답사', description: '장소 사전답사를 진행합니다', order: 2 },
-        { id: 'step3', title: '계획서 작성', description: '체험학습 계획서를 작성합니다', order: 3 },
-        { id: 'step4', title: '결재 받기', description: '계획서 결재를 받습니다', order: 4 },
-        { id: 'step5', title: '안내문 발송', description: '가정통신문을 발송합니다', order: 5 },
-        { id: 'step6', title: '참가비 수합', description: '참가비를 수합합니다', order: 6 },
-        { id: 'step7', title: '인솔교사 배정', description: '인솔교사를 배정합니다', order: 7 },
-        { id: 'step8', title: '안전교육', description: '사전 안전교육을 실시합니다', order: 8 },
-        { id: 'step9', title: '체험학습 실시', description: '현장체험학습을 실시합니다', order: 9 },
-        { id: 'step10', title: '결과보고서 작성', description: '결과보고서를 작성합니다', order: 10 },
-      ],
-      estimatedTime: '1시간',
-      difficulty: 'hard',
-    },
-    {
-      title: '안전교육 실시',
-      description: '교육 계획 수립부터 NEIS 입력까지',
-      category: '안전',
-      totalSteps: 5,
-      steps: [
-        { id: 'step1', title: '교육 자료 준비', description: '안전교육 자료를 준비합니다', order: 1 },
-        { id: 'step2', title: '교육 계획 수립', description: '교육 계획을 수립합니다', order: 2 },
-        { id: 'step3', title: '안전교육 실시', description: '안전교육을 실시합니다', order: 3 },
-        { id: 'step4', title: '교육 결과 기록', description: '교육 결과를 기록합니다', order: 4 },
-        { id: 'step5', title: 'NEIS 입력', description: 'NEIS에 입력합니다', order: 5 },
-      ],
-      estimatedTime: '20분',
-      difficulty: 'easy',
-    },
-    {
-      title: '수행평가 계획 및 실시',
-      description: '평가 계획 수립부터 성적 산출까지',
-      category: '평가',
-      totalSteps: 7,
-      steps: [
-        { id: 'step1', title: '평가 계획 수립', description: '수행평가 계획을 수립합니다', order: 1 },
-        { id: 'step2', title: '평가 기준 작성', description: '평가 기준안을 작성합니다', order: 2 },
-        { id: 'step3', title: '평가 도구 제작', description: '평가 도구를 제작합니다', order: 3 },
-        { id: 'step4', title: '수행평가 실시', description: '수행평가를 실시합니다', order: 4 },
-        { id: 'step5', title: '채점 및 기록', description: '채점하고 기록합니다', order: 5 },
-        { id: 'step6', title: '성적 산출', description: '성적을 산출합니다', order: 6 },
-        { id: 'step7', title: 'NEIS 입력', description: 'NEIS에 입력합니다', order: 7 },
-      ],
-      estimatedTime: '40분',
-      difficulty: 'medium',
-    },
-    {
-      title: '가정통신문 작성 및 배포',
-      description: '문서 작성부터 회신 확인까지',
-      category: '문서작성',
-      totalSteps: 4,
-      steps: [
-        { id: 'step1', title: '내용 작성', description: '가정통신문 내용을 작성합니다', order: 1 },
-        { id: 'step2', title: '결재 받기', description: '결재를 받습니다', order: 2 },
-        { id: 'step3', title: '배포', description: '학생들에게 배포합니다', order: 3 },
-        { id: 'step4', title: '회신 확인', description: '회신을 확인합니다', order: 4 },
-      ],
-      estimatedTime: '15분',
       difficulty: 'easy',
     },
   ];

@@ -9,6 +9,7 @@ export interface Department {
   headPosition: string;
   importance: 'high' | 'medium' | 'low';
   category: 'core' | 'support' | 'specialist';
+  isCustom?: boolean; // 사용자 정의 업무 여부
 }
 
 export interface Role {
@@ -16,6 +17,18 @@ export interface Role {
   name: string;
   description: string;
   category: 'management' | 'homeroom' | 'subject' | 'specialist';
+  isCustom?: boolean;
+}
+
+// 학년별 담임 업무 (1~6학년)
+export interface GradeTask {
+  id: string;
+  grade: number;
+  name: string;
+  description: string;
+  tasks: string[];
+  monthlyTasks: { month: number; tasks: string[] }[];
+  isCustom?: boolean;
 }
 
 // 부서 목록 (20개)
@@ -309,3 +322,256 @@ export const categoryLabels = {
   support: '지원 부서',
   specialist: '전문 부서',
 };
+
+// 학년별 담임 업무 상세 (1~6학년)
+export const gradeTasks: GradeTask[] = [
+  {
+    id: 'grade_1',
+    grade: 1,
+    name: '1학년 담임',
+    description: '초등학교 입학 첫해, 학교생활 적응 지도',
+    tasks: [
+      '입학식 준비 및 진행',
+      '학교생활 적응 지도 (급식, 화장실, 청소 등)',
+      '한글 해득 지도 (한글 미해득 학생 집중 지도)',
+      '기초학습 지도 (읽기, 쓰기, 셈하기)',
+      '학부모 상담 (입학 초기 적응 관련)',
+      '늘봄학교/돌봄교실 연계',
+      '안전교육 강화 (등하교, 교실 내)',
+      '1학기 학교생활기록부 입력 (적응 위주)'
+    ],
+    monthlyTasks: [
+      { month: 3, tasks: ['입학식', '학교생활 적응교육', '학부모 총회', '한글 해득 검사'] },
+      { month: 4, tasks: ['한글 지도', '학교폭력예방교육', '교통안전교육'] },
+      { month: 5, tasks: ['어린이날 행사', '가정의 달 행사', '현장체험학습'] },
+      { month: 6, tasks: ['학부모 상담주간', '1학기 평가', '생기부 입력'] },
+      { month: 7, tasks: ['여름방학 안내', '방학과제 안내', '학기말 정리'] },
+      { month: 9, tasks: ['2학기 적응', '한글 재검사', '교육과정 재구성'] },
+      { month: 10, tasks: ['가을 운동회', '독서의 달', '현장체험학습'] },
+      { month: 11, tasks: ['학부모 상담주간', '학예발표회 준비'] },
+      { month: 12, tasks: ['2학기 평가', '생기부 마감', '겨울방학 안내'] },
+      { month: 2, tasks: ['새학년 준비', '학급 물품 정리', '생기부 최종 마감'] }
+    ]
+  },
+  {
+    id: 'grade_2',
+    grade: 2,
+    name: '2학년 담임',
+    description: '기초학력 정착 및 학교생활 습관 형성',
+    tasks: [
+      '기초학력 진단 및 지도',
+      '구구단 완전 학습 지도',
+      '기본 생활습관 지도',
+      '학급 자치활동 기초 지도',
+      '독서교육 강화',
+      '안전한 놀이 지도',
+      '학교생활기록부 입력'
+    ],
+    monthlyTasks: [
+      { month: 3, tasks: ['학급 개편', '기초학력 진단', '학부모 총회'] },
+      { month: 4, tasks: ['구구단 지도 시작', '봄 현장체험학습'] },
+      { month: 5, tasks: ['어린이날 행사', '학부모 참여수업'] },
+      { month: 6, tasks: ['학부모 상담', '1학기 평가'] },
+      { month: 9, tasks: ['2학기 시작', '구구단 완성'] },
+      { month: 10, tasks: ['가을 운동회', '독서행사'] },
+      { month: 11, tasks: ['학부모 상담', '학예발표회'] },
+      { month: 12, tasks: ['2학기 평가', '생기부 마감'] }
+    ]
+  },
+  {
+    id: 'grade_3',
+    grade: 3,
+    name: '3학년 담임',
+    description: '교과전담 시작, 사회/과학 신규 교과 도입',
+    tasks: [
+      '교과전담 수업 시간표 관리',
+      '사회, 과학 신규 교과 적응 지도',
+      '영어 교과 시작 (3학년부터)',
+      '분수/소수 개념 지도',
+      '실험·관찰 수업 지도',
+      '디지털 리터러시 기초 교육',
+      '학급회의 정례화',
+      '현장체험학습 계획 및 운영'
+    ],
+    monthlyTasks: [
+      { month: 3, tasks: ['새 교과(사회, 과학, 영어) 오리엔테이션', '학부모 총회'] },
+      { month: 4, tasks: ['과학의 달 행사', '영어 기초 지도'] },
+      { month: 5, tasks: ['현장체험학습', '학부모 공개수업'] },
+      { month: 6, tasks: ['1학기 지필평가', '학부모 상담'] },
+      { month: 9, tasks: ['2학기 교육과정', '사회과 지역화 학습'] },
+      { month: 10, tasks: ['운동회', '과학탐구대회'] },
+      { month: 11, tasks: ['학예발표회', '학부모 상담'] },
+      { month: 12, tasks: ['2학기 평가', '생기부 마감'] }
+    ]
+  },
+  {
+    id: 'grade_4',
+    grade: 4,
+    name: '4학년 담임',
+    description: '중학년 심화, 자기주도학습 역량 기르기',
+    tasks: [
+      '자기주도학습 습관 형성',
+      '사회과 지역사회 학습 심화',
+      '과학 실험 수업 강화',
+      '분수 연산 지도',
+      '학급 임원 선거 지도',
+      '또래 관계 지도',
+      '진로교육 시작',
+      '체험학습 확대 운영'
+    ],
+    monthlyTasks: [
+      { month: 3, tasks: ['학급임원선거', '학부모 총회', '진단평가'] },
+      { month: 4, tasks: ['과학의 달', '지역사회 탐방'] },
+      { month: 5, tasks: ['가정의 달 행사', '현장체험학습'] },
+      { month: 6, tasks: ['1학기 평가', '학부모 상담주간'] },
+      { month: 9, tasks: ['2학기 시작', '진로체험'] },
+      { month: 10, tasks: ['운동회', '독서행사'] },
+      { month: 11, tasks: ['학예발표회', '학부모 상담'] },
+      { month: 12, tasks: ['2학기 평가', '생기부 마감'] }
+    ]
+  },
+  {
+    id: 'grade_5',
+    grade: 5,
+    name: '5학년 담임',
+    description: '고학년 리더십, 학생자치 본격화',
+    tasks: [
+      '학생자치회 활동 본격화',
+      '수학 심화 (분수/소수 사칙연산)',
+      '사회과 한국사 기초',
+      '과학 탐구 프로젝트',
+      '영어 문장 읽기/쓰기',
+      '진로탐색 프로그램',
+      '리더십 교육',
+      '성교육 (사춘기)',
+      '또래 갈등 중재'
+    ],
+    monthlyTasks: [
+      { month: 3, tasks: ['학생회 임원 선거', '학부모 총회', '학년초 진단'] },
+      { month: 4, tasks: ['과학의 달', '리더십 캠프'] },
+      { month: 5, tasks: ['현장체험학습', '학부모 공개수업'] },
+      { month: 6, tasks: ['1학기 평가', '학부모 상담'] },
+      { month: 9, tasks: ['2학기 학생회 활동', '진로탐색주간'] },
+      { month: 10, tasks: ['운동회', '진로체험'] },
+      { month: 11, tasks: ['학예발표회', '학부모 상담'] },
+      { month: 12, tasks: ['2학기 평가', '진로포트폴리오 정리'] }
+    ]
+  },
+  {
+    id: 'grade_6',
+    grade: 6,
+    name: '6학년 담임',
+    description: '졸업 준비, 중학교 진학 준비, 최고 학년 리더십',
+    tasks: [
+      '졸업앨범 제작 총괄',
+      '졸업식 준비 및 진행',
+      '중학교 진학 지도 (중학교 배정, 진학설명회)',
+      '전국연합학력평가 대비',
+      '학생자치회 임원 활동 총괄',
+      '6학년 수학여행/졸업여행',
+      '생활기록부 최종 마감',
+      '진로교육 심화',
+      '성교육 강화 (2차 성징)',
+      '학교 폭력 예방교육 강화',
+      '선배로서 리더십 발휘',
+      '후배 멘토링 프로그램'
+    ],
+    monthlyTasks: [
+      { month: 3, tasks: ['졸업앨범 계획 수립', '학생회장 선거', '학부모 총회', '전국연합학력평가 안내'] },
+      { month: 4, tasks: ['졸업앨범 촬영 시작', '과학의 달', '리더십 캠프'] },
+      { month: 5, tasks: ['수학여행/졸업여행', '학부모 공개수업', '사진촬영(개인/단체)'] },
+      { month: 6, tasks: ['1학기 평가', '학부모 상담', '졸업앨범 원고 수집'] },
+      { month: 7, tasks: ['1학기 생기부 마감', '여름방학 과제 안내'] },
+      { month: 9, tasks: ['2학기 시작', '졸업앨범 편집', '중학교 진학설명회'] },
+      { month: 10, tasks: ['운동회(최고학년 주도)', '중학교 배정 원서', '진로체험'] },
+      { month: 11, tasks: ['졸업앨범 최종교정', '학예발표회 주관', '학부모 상담', '중학교 배정 결과'] },
+      { month: 12, tasks: ['2학기 평가', '졸업앨범 인쇄', '생기부 최종마감'] },
+      { month: 1, tasks: ['졸업앨범 배부', '졸업식 준비', '학급 정리'] },
+      { month: 2, tasks: ['졸업식', '생기부 최종점검', '학급물품 반납', '후배들에게 인사'] }
+    ]
+  }
+];
+
+// 특수 업무 (기존 부서에 속하지 않는 개별 업무)
+export const specialTasks = [
+  {
+    id: 'special_001',
+    name: '학교운영위원회',
+    description: '학운위 회의 준비, 안건 작성, 회의록 작성',
+    department: '교무부',
+    frequency: '월 1회',
+    tasks: ['회의 일정 조정', '안건 수합', '회의자료 준비', '회의록 작성', '결과 공지']
+  },
+  {
+    id: 'special_002',
+    name: '학교폭력대책심의위원회',
+    description: '학폭 사안 처리, 심의위원회 운영',
+    department: '생활지도부',
+    frequency: '사안 발생시',
+    tasks: ['사안 접수', '사안조사', '전담기구 회의', '심의위 개최', '결과 통보']
+  },
+  {
+    id: 'special_003',
+    name: '교원능력개발평가',
+    description: '교원평가 시스템 운영, 결과 분석',
+    department: '연구부',
+    frequency: '연 1회 (10-11월)',
+    tasks: ['평가 계획 수립', '학부모/학생 평가자 등록', '평가 실시', '결과 분석', '결과 통보']
+  },
+  {
+    id: 'special_004',
+    name: '학교회계',
+    description: '예산 편성, 세출 관리, 결산',
+    department: '행정실',
+    frequency: '연중',
+    tasks: ['예산 편성', '세출 집행', '증빙서류 관리', '결산']
+  },
+  {
+    id: 'special_005',
+    name: '학부모회',
+    description: '학부모회 조직 및 운영 지원',
+    department: '교무부',
+    frequency: '분기별',
+    tasks: ['학부모회 임원 선출', '정기회의 지원', '학부모 참여 행사 운영']
+  },
+  {
+    id: 'special_006',
+    name: '방송부/방송반',
+    description: '학교 방송 시스템 운영, 방송반 학생 지도',
+    department: '정보부',
+    frequency: '매일',
+    tasks: ['조회/종회 방송', '급식방송', '행사 방송', '방송반 학생 지도', '방송장비 관리']
+  },
+  {
+    id: 'special_007',
+    name: '인사자문위원회',
+    description: '교원 인사 관련 자문',
+    department: '교무부',
+    frequency: '연 2회',
+    tasks: ['인사 기준 자문', '위원회 운영']
+  },
+  {
+    id: 'special_008',
+    name: '학교평가',
+    description: '학교 자체평가, 교육청 평가 대응',
+    department: '연구부',
+    frequency: '연 1회',
+    tasks: ['자체평가 계획', '지표별 자료 수집', '평가보고서 작성', '결과 환류']
+  },
+  {
+    id: 'special_009',
+    name: '졸업앨범',
+    description: '졸업앨범 제작 총괄 (6학년 담임 연계)',
+    department: '6학년부',
+    frequency: '연간 (3월~2월)',
+    tasks: ['앨범 업체 선정', '촬영 일정 조정', '원고 수집', '편집 검토', '배부']
+  },
+  {
+    id: 'special_010',
+    name: '학교 축제',
+    description: '학교 축제/학예발표회 기획 및 운영',
+    department: '예술부',
+    frequency: '연 1-2회',
+    tasks: ['행사 계획', '프로그램 구성', '무대/음향 준비', '리허설', '행사 운영', '정리']
+  }
+];

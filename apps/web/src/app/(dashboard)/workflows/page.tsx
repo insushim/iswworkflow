@@ -35,8 +35,8 @@ import {
   AlertCircle,
   ChevronLeft,
 } from 'lucide-react';
-import { useWorkflows } from '@/hooks/useFirestore';
-import { Workflow, WorkflowStep, initializeWorkflows } from '@/lib/firebase-db';
+import { useWorkflows, LocalWorkflow } from '@/hooks/useFirestore';
+import { WorkflowStep } from '@/lib/firebase-db';
 
 const categoryIcons: Record<string, React.ElementType> = {
   '학급경영': BookOpen,
@@ -59,27 +59,10 @@ export default function WorkflowsPage() {
   const { workflows, progress, loading, error, updateProgress, getProgressForWorkflow } = useWorkflows();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
-  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<LocalWorkflow | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(false);
 
-  // Initialize workflows if empty
-  useEffect(() => {
-    const init = async () => {
-      if (!loading && workflows.length === 0 && !isInitializing) {
-        setIsInitializing(true);
-        try {
-          await initializeWorkflows();
-          window.location.reload();
-        } catch (err) {
-          console.error('워크플로우 초기화 실패:', err);
-        } finally {
-          setIsInitializing(false);
-        }
-      }
-    };
-    init();
-  }, [loading, workflows.length, isInitializing]);
+  // 초기화 로직 제거 - useWorkflows 훅에서 로컬 기본 데이터 제공
 
   const filteredWorkflows = workflows.filter((workflow) => {
     const matchesSearch = workflow.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -92,7 +75,7 @@ export default function WorkflowsPage() {
     return workflowProgress?.completedSteps || [];
   };
 
-  const getWorkflowStatus = (workflow: Workflow) => {
+  const getWorkflowStatus = (workflow: LocalWorkflow) => {
     const completedSteps = getCompletedSteps(workflow.id || '');
     if (completedSteps.length === workflow.totalSteps) return 'completed';
     if (completedSteps.length > 0) return 'in_progress';
@@ -106,7 +89,7 @@ export default function WorkflowsPage() {
     notStarted: workflows.filter((w) => getWorkflowStatus(w) === 'not_started').length,
   };
 
-  const handleStepToggle = async (workflow: Workflow, stepId: string) => {
+  const handleStepToggle = async (workflow: LocalWorkflow, stepId: string) => {
     if (!workflow.id) return;
 
     const currentCompletedSteps = getCompletedSteps(workflow.id);
@@ -121,18 +104,16 @@ export default function WorkflowsPage() {
     await updateProgress(workflow.id, newCompletedSteps, workflow.totalSteps);
   };
 
-  const openWorkflowDetail = (workflow: Workflow) => {
+  const openWorkflowDetail = (workflow: LocalWorkflow) => {
     setSelectedWorkflow(workflow);
     setIsDetailDialogOpen(true);
   };
 
-  if (loading || isInitializing) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">
-          {isInitializing ? '워크플로우를 초기화하는 중...' : '워크플로우를 불러오는 중...'}
-        </span>
+        <span className="ml-2">워크플로우를 불러오는 중...</span>
       </div>
     );
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   Home,
@@ -18,9 +18,12 @@ import {
   FolderKanban,
   Users,
   BarChart3,
+  GraduationCap,
+  ClipboardList,
+  BookMarked,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState, memo, useCallback, useMemo } from 'react';
+import { useState, memo, useCallback, useEffect, useTransition } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -42,7 +45,8 @@ const navigation = [
     items: [
       { name: '업무 목록', href: '/tasks', icon: CheckSquare },
       { name: '워크플로우', href: '/workflows', icon: FolderKanban },
-      { name: '문서 관리', href: '/documents', icon: FileText },
+      { name: '문서 작성', href: '/documents', icon: FileText },
+      { name: '생활기록부', href: '/school-record', icon: GraduationCap },
     ],
   },
   {
@@ -50,12 +54,14 @@ const navigation = [
     items: [
       { name: '캘린더', href: '/calendar', icon: Calendar },
       { name: '학사일정', href: '/academic-calendar', icon: BookOpen },
+      { name: '월별 업무', href: '/monthly-tasks', icon: ClipboardList },
       { name: '알림 설정', href: '/reminders', icon: Bell },
     ],
   },
   {
     title: '정보',
     items: [
+      { name: '업무분장 가이드', href: '/duties-guide', icon: BookMarked },
       { name: '커뮤니티 자료', href: '/resources', icon: Users },
       { name: '통계', href: '/analytics', icon: BarChart3 },
     ],
@@ -64,11 +70,30 @@ const navigation = [
 
 function SidebarComponent() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed(prev => !prev);
   }, []);
+
+  // 모든 페이지 prefetch
+  useEffect(() => {
+    const allHrefs = navigation.flatMap(section => section.items.map(item => item.href));
+    allHrefs.forEach(href => {
+      router.prefetch(href);
+    });
+    router.prefetch('/settings');
+  }, [router]);
+
+  // 빠른 네비게이션을 위한 핸들러
+  const handleNavClick = useCallback((href: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    startTransition(() => {
+      router.push(href);
+    });
+  }, [router]);
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -114,11 +139,14 @@ function SidebarComponent() {
                   const linkContent = (
                     <Link
                       href={item.href}
+                      onClick={handleNavClick(item.href)}
+                      prefetch={true}
                       className={cn(
-                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
                         isActive
                           ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                        isPending && 'opacity-70'
                       )}
                     >
                       <Icon className="h-5 w-5 flex-shrink-0" />

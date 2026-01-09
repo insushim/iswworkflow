@@ -1,0 +1,16 @@
+{
+  "name": "EduFlow - 초등교사 업무 도우미",
+  "short_name": "EduFlow",
+  "description": "초등학교 교사를 위한 AI 기반 업무 지원 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

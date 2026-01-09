@@ -18,7 +18,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'date-fns'],
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'date-fns', 'firebase', '@firebase/firestore'],
   },
   output: 'standalone',
   // 성능 최적화
@@ -35,6 +35,8 @@ const nextConfig = {
   compress: true,
   // 파워드 바이 헤더 제거
   poweredByHeader: false,
+  // 정적 페이지 생성 최적화
+  staticPageGenerationTimeout: 120,
   // 정적 파일 캐싱
   headers: async () => [
     {
@@ -52,6 +54,15 @@ const nextConfig = {
         {
           key: 'Cache-Control',
           value: 'public, max-age=31536000, immutable',
+        },
+      ],
+    },
+    {
+      source: '/api/:path*',
+      headers: [
+        {
+          key: 'Cache-Control',
+          value: 'no-store, max-age=0',
         },
       ],
     },

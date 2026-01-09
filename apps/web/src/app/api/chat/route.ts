@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Node.js runtime으로 변경 (Edge에서 환경변수 문제 해결)
-export const runtime = 'nodejs';
+// Edge Runtime으로 변경 - Cold Start 제거로 훨씬 빠름
+export const runtime = 'edge';
+export const preferredRegion = ['icn1', 'hnd1']; // 한국/일본 리전 우선
 
 // 초등교사 업무 전문 시스템 프롬프트
 const TEACHER_SYSTEM_PROMPT = `당신은 대한민국 초등학교 교사를 위한 전문 AI 비서 '에듀플로우'입니다.

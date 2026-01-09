@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllTasks, createTaskAdmin, Timestamp } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// Response 헤더로 캐싱 최적화
+const CACHE_HEADERS = {
+  'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       tasks,
       total: tasks.length,
-    });
+    }, { headers: CACHE_HEADERS });
   } catch (error) {
     console.error('Tasks API Error:', error);
     return NextResponse.json(

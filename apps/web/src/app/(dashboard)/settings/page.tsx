@@ -27,10 +27,14 @@ import {
   Building2,
   GraduationCap,
   Stethoscope,
+  Plus,
+  X,
+  BookOpen,
+  Briefcase,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettings } from '@/hooks/useFirestore';
-import { departments, roles as roleData, departmentsByCategory, categoryLabels } from '@/data/departments';
+import { departments, roles as roleData, departmentsByCategory, categoryLabels, gradeTasks, specialTasks } from '@/data/departments';
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -45,6 +49,7 @@ export default function SettingsPage() {
     school: '',
     classInfo: '',
     roles: [] as string[],
+    customTasks: [] as string[], // 사용자 정의 업무
     notifications: {
       email: true,
       push: true,
@@ -53,6 +58,9 @@ export default function SettingsPage() {
     },
     theme: 'system' as 'light' | 'dark' | 'system',
   });
+
+  // 사용자 정의 업무 추가 상태
+  const [newCustomTask, setNewCustomTask] = useState('');
 
   // Initialize form data from settings
   useEffect(() => {
@@ -63,6 +71,7 @@ export default function SettingsPage() {
         school: settings.school || '',
         classInfo: settings.classInfo || '',
         roles: settings.roles || [],
+        customTasks: ((settings as unknown) as { customTasks?: string[] }).customTasks || [],
         notifications: settings.notifications || {
           email: true,
           push: true,
@@ -114,6 +123,28 @@ export default function SettingsPage() {
     await updateSettings({ roles: newRoles });
   };
 
+  // 사용자 정의 업무 추가
+  const handleAddCustomTask = async () => {
+    if (!newCustomTask.trim()) return;
+    if (formData.customTasks.includes(newCustomTask.trim())) {
+      alert('이미 추가된 업무입니다.');
+      return;
+    }
+    const newCustomTasks = [...formData.customTasks, newCustomTask.trim()];
+    setFormData({ ...formData, customTasks: newCustomTasks });
+    setNewCustomTask('');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateSettings({ customTasks: newCustomTasks } as any);
+  };
+
+  // 사용자 정의 업무 삭제
+  const handleRemoveCustomTask = async (task: string) => {
+    const newCustomTasks = formData.customTasks.filter((t) => t !== task);
+    setFormData({ ...formData, customTasks: newCustomTasks });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateSettings({ customTasks: newCustomTasks } as any);
+  };
+
   const handleToggleNotification = async (key: keyof typeof formData.notifications) => {
     const newNotifications = {
       ...formData.notifications,
@@ -134,16 +165,9 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">설정을 불러오는 중...</span>
-      </div>
-    );
-  }
-
-  if (error) {
+  // 로딩 중이어도 UI 즉시 표시 (Skeleton 대신 실제 UI with placeholder)
+  // error 발생 시에만 에러 표시
+  if (error && !loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
@@ -390,14 +414,112 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
+                  {/* 학년별 담임 업무 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <BookOpen className="h-4 w-4 text-orange-500" />
+                      <h4 className="text-sm font-semibold text-orange-700">학년별 담임 업무</h4>
+                      <span className="text-xs text-muted-foreground">(담당 학년 선택)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {gradeTasks.map((grade) => {
+                        const isSelected = formData.roles.includes(grade.name);
+                        return (
+                          <Badge
+                            key={grade.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`cursor-pointer transition-all ${isSelected ? 'bg-orange-600 hover:bg-orange-700' : 'hover:bg-orange-50 hover:border-orange-300'}`}
+                            onClick={() => handleToggleRole(grade.name)}
+                            title={grade.description}
+                          >
+                            {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {grade.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 특수 업무 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Briefcase className="h-4 w-4 text-cyan-500" />
+                      <h4 className="text-sm font-semibold text-cyan-700">특수 업무</h4>
+                      <span className="text-xs text-muted-foreground">(위원회/특별업무)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {specialTasks.map((task) => {
+                        const isSelected = formData.roles.includes(task.name);
+                        return (
+                          <Badge
+                            key={task.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`cursor-pointer transition-all ${isSelected ? 'bg-cyan-600 hover:bg-cyan-700' : 'hover:bg-cyan-50 hover:border-cyan-300'}`}
+                            onClick={() => handleToggleRole(task.name)}
+                            title={task.description}
+                          >
+                            {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {task.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 사용자 정의 업무 추가 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Plus className="h-4 w-4 text-emerald-500" />
+                      <h4 className="text-sm font-semibold text-emerald-700">나만의 업무 추가</h4>
+                      <span className="text-xs text-muted-foreground">(직접 입력)</span>
+                    </div>
+                    <div className="flex gap-2 mb-3">
+                      <Input
+                        value={newCustomTask}
+                        onChange={(e) => setNewCustomTask(e.target.value)}
+                        placeholder="새 업무명 입력 (예: 인권교육담당, 녹색어머니회)"
+                        className="flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddCustomTask()}
+                      />
+                      <Button onClick={handleAddCustomTask} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                        <Plus className="h-4 w-4 mr-1" />
+                        추가
+                      </Button>
+                    </div>
+                    {formData.customTasks.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.customTasks.map((task) => (
+                          <Badge
+                            key={task}
+                            variant="default"
+                            className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer"
+                          >
+                            {task}
+                            <button
+                              onClick={() => handleRemoveCustomTask(task)}
+                              className="ml-1 hover:text-red-200"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* 선택된 업무 요약 */}
-                  {formData.roles.length > 0 && (
+                  {(formData.roles.length > 0 || formData.customTasks.length > 0) && (
                     <div className="mt-4 p-3 bg-muted rounded-lg">
-                      <p className="text-sm font-medium mb-2">선택된 업무 ({formData.roles.length}개)</p>
+                      <p className="text-sm font-medium mb-2">선택된 업무 ({formData.roles.length + formData.customTasks.length}개)</p>
                       <div className="flex flex-wrap gap-1">
                         {formData.roles.map((role) => (
                           <Badge key={role} variant="secondary" className="text-xs">
                             {role}
+                          </Badge>
+                        ))}
+                        {formData.customTasks.map((task) => (
+                          <Badge key={task} variant="secondary" className="text-xs bg-emerald-100 text-emerald-800">
+                            {task}
                           </Badge>
                         ))}
                       </div>

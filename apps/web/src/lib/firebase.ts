@@ -1,16 +1,23 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import {
-  getFirestore,
-  Firestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from 'firebase/firestore';
+import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 
-// Firebase 설정 - 환경변수만 사용 (보안을 위해 하드코딩된 값 절대 사용 금지)
+// ============================================
+// 🔥 FIREBASE SDK 디버그 로거
+// ============================================
+const DEBUG_FIREBASE = true;
+const fbLog = (message: string, data?: unknown) => {
+  if (!DEBUG_FIREBASE) return;
+  const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
+  console.log(
+    `%c[${timestamp}] 🔥 [FIREBASE-SDK] ${message}`,
+    'color: orange; font-weight: bold;',
+    data !== undefined ? data : ''
+  );
+};
+
+// Firebase 설정
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
@@ -21,54 +28,71 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
 };
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-let storage: FirebaseStorage;
-let isInitialized = false;
+// 싱글톤 인스턴스
+let _app: FirebaseApp | null = null;
+let _auth: Auth | null = null;
+let _db: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
 
-// Firebase 초기화 함수
-function initializeFirebaseApp(): FirebaseApp {
-  if (getApps().length === 0) {
-    return initializeApp(firebaseConfig);
-  }
-  return getApps()[0];
-}
+// 지연 초기화 - 필요할 때만 초기화
+function getApp(): FirebaseApp {
+  if (!_app) {
+    const start = performance.now();
+    const existingApps = getApps();
+    fbLog(`기존 Firebase 앱 수: ${existingApps.length}`);
 
-// 초기화
-try {
-  app = initializeFirebaseApp();
-  auth = getAuth(app);
-
-  // Firestore 초기화 (새로운 캐시 설정 방식)
-  if (typeof window !== 'undefined') {
-    // 클라이언트 사이드에서만 영속적 캐시 사용
-    try {
-      db = initializeFirestore(app, {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager(),
-        }),
-      });
-    } catch {
-      // 이미 초기화된 경우
-      db = getFirestore(app);
+    if (existingApps.length === 0) {
+      fbLog('Firebase 앱 초기화 중...', { projectId: firebaseConfig.projectId });
+      _app = initializeApp(firebaseConfig);
+      fbLog(`Firebase 앱 초기화 완료 (${(performance.now() - start).toFixed(2)}ms)`);
+    } else {
+      _app = existingApps[0];
+      fbLog('기존 Firebase 앱 재사용');
     }
-  } else {
-    db = getFirestore(app);
   }
-
-  storage = getStorage(app);
-  isInitialized = true;
-} catch (error) {
-  console.error('Firebase initialization error:', error);
-  // 폴백: 기본 초기화
-  app = initializeFirebaseApp();
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
+  return _app;
 }
 
-// Firebase 연결 상태 확인 - 환경변수가 제대로 설정되었는지 검증
+// Auth getter - 지연 초기화
+export function getAuthInstance(): Auth {
+  if (!_auth) {
+    const start = performance.now();
+    fbLog('Auth 인스턴스 생성 중...');
+    _auth = getAuth(getApp());
+    fbLog(`Auth 인스턴스 생성 완료 (${(performance.now() - start).toFixed(2)}ms)`);
+  } else {
+    fbLog('Auth 인스턴스 캐시 사용');
+  }
+  return _auth;
+}
+
+// Firestore getter - 지연 초기화
+export function getDbInstance(): Firestore {
+  if (!_db) {
+    const start = performance.now();
+    fbLog('Firestore 인스턴스 생성 중...');
+    _db = getFirestore(getApp());
+    fbLog(`Firestore 인스턴스 생성 완료 (${(performance.now() - start).toFixed(2)}ms)`);
+  } else {
+    fbLog('Firestore 인스턴스 캐시 사용');
+  }
+  return _db;
+}
+
+// Storage getter - 지연 초기화
+export function getStorageInstance(): FirebaseStorage {
+  if (!_storage) {
+    const start = performance.now();
+    fbLog('Storage 인스턴스 생성 중...');
+    _storage = getStorage(getApp());
+    fbLog(`Storage 인스턴스 생성 완료 (${(performance.now() - start).toFixed(2)}ms)`);
+  } else {
+    fbLog('Storage 인스턴스 캐시 사용');
+  }
+  return _storage;
+}
+
+// Firebase 연결 상태 확인
 export function isFirebaseConfigured(): boolean {
   return Boolean(
     firebaseConfig.apiKey &&
@@ -78,13 +102,50 @@ export function isFirebaseConfigured(): boolean {
   );
 }
 
-// Analytics (client-side only)
-export const initAnalytics = async (): Promise<Analytics | null> => {
-  if (typeof window !== 'undefined' && await isSupported()) {
-    return getAnalytics(app);
-  }
-  return null;
-};
+// 하위 호환성을 위한 export (기존 코드에서 사용하는 경우)
+// 실제 사용 시점에 초기화됨
+export const app = new Proxy({} as FirebaseApp, {
+  get(_, prop) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (getApp() as any)[prop as string];
+  },
+});
 
-export { app, auth, db, storage, isInitialized };
+export const auth = new Proxy({} as Auth, {
+  get(_, prop) {
+    const instance = getAuthInstance();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const value = (instance as any)[prop as string];
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
+
+export const db = new Proxy({} as Firestore, {
+  get(_, prop) {
+    const instance = getDbInstance();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const value = (instance as any)[prop as string];
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
+
+export const storage = new Proxy({} as FirebaseStorage, {
+  get(_, prop) {
+    const instance = getStorageInstance();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const value = (instance as any)[prop as string];
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
+
+export const isInitialized = true;
 export default app;

@@ -1,0 +1,1152 @@
+// 부서별 업무 매뉴얼 상세 데이터
+// 출처: 경기도교육청 학교업무매뉴얼, 서울시교육청 업무길라잡이, 교원행정업무경감매뉴얼
+
+export interface DepartmentManual {
+  id: string;
+  departmentId: string;
+  departmentName: string;
+  description: string;
+  keyResponsibilities: string[];
+  tasks: DepartmentTaskDetail[];
+  relatedSystems: string[];
+  annualSchedule: MonthlyTask[];
+  tips: string[];
+  references: string[];
+}
+
+export interface DepartmentTaskDetail {
+  id: string;
+  name: string;
+  category: string;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semester' | 'yearly' | 'as_needed';
+  description: string;
+  procedure: string[];
+  relatedDocuments: string[];
+  deadline?: string;
+  tips?: string[];
+  cautions?: string[];
+}
+
+export interface MonthlyTask {
+  month: number;
+  tasks: string[];
+}
+
+export const departmentManuals: DepartmentManual[] = [
+  // ========== 교무부 ==========
+  {
+    id: 'dept-gyomu',
+    departmentId: 'gyomu',
+    departmentName: '교무부',
+    description: '학교 운영 전반의 행정업무와 학사관리를 총괄하는 핵심 부서',
+    keyResponsibilities: [
+      '학교 교육계획 수립 및 운영',
+      '학적 관리 (입학, 전출입, 졸업)',
+      '학교생활기록부 관리',
+      '수업 및 시간표 관리',
+      '교원 인사 및 복무 관리',
+      '학교운영위원회 운영',
+      '각종 증명서 발급',
+    ],
+    tasks: [
+      {
+        id: 'gyomu-001',
+        name: '학적 관리',
+        category: '학사관리',
+        frequency: 'as_needed',
+        description: '학생의 입학, 전출입, 졸업 등 학적 변동 사항 관리',
+        procedure: [
+          '1. 전입 학생 서류 접수 (주민등록등본, 학적부 사본 등)',
+          '2. NEIS 학적 등록 (학적>학적기본>전입학적정보입력)',
+          '3. 학급 배정 및 출석부 등록',
+          '4. 학교생활기록부 이관 확인',
+          '5. 교과서 배부 및 급식 등록',
+        ],
+        relatedDocuments: ['전출입 확인서', '학적부 사본', '주민등록등본'],
+        tips: [
+          'NEIS에서 전입 승인은 전출교 담당자와 협의 후 처리',
+          '학생부 이관 후 내용 확인 필수',
+        ],
+        cautions: [
+          '학적 오류 시 학생부 정정 절차 필요',
+          '전출입 날짜 정확히 기록',
+        ],
+      },
+      {
+        id: 'gyomu-002',
+        name: '학교생활기록부 관리',
+        category: '학사관리',
+        frequency: 'semester',
+        description: '학생부 입력, 점검, 마감 관리',
+        procedure: [
+          '1. 학년 초 학생부 작성 계획 수립',
+          '2. 교사별 입력 기간 안내',
+          '3. 입력 내용 점검 (오탈자, 누락 등)',
+          '4. 학년말 최종 점검 및 마감',
+          '5. 출력 및 보관',
+        ],
+        relatedDocuments: ['학생부 기재요령', '학생부 점검표'],
+        deadline: '학기말 성적처리 기간',
+        tips: [
+          '학생부 점검 체크리스트 활용',
+          'NEIS 자료 백업 정기적 실시',
+        ],
+      },
+      {
+        id: 'gyomu-003',
+        name: '시간표 작성 및 관리',
+        category: '수업관리',
+        frequency: 'yearly',
+        description: '학년/학급별 시간표 편성 및 조정',
+        procedure: [
+          '1. 교육과정에 따른 시수 확정',
+          '2. 전담 교사 시수 배정',
+          '3. 특별실 사용 시간 조정',
+          '4. 시간표 프로그램으로 편성',
+          '5. 담임/전담 확인 후 확정',
+        ],
+        relatedDocuments: ['교육과정 편성표', '교원 주당 시수표'],
+        tips: [
+          '학년군별 특성 고려',
+          '전담 교사 동선 고려한 배치',
+        ],
+      },
+      {
+        id: 'gyomu-004',
+        name: '졸업/입학 업무',
+        category: '학사관리',
+        frequency: 'yearly',
+        description: '졸업식, 입학식 준비 및 진행',
+        procedure: [
+          '1. 졸업/입학 대상자 명단 확정',
+          '2. 졸업장/입학확인서 발급 준비',
+          '3. 식순 및 행사 계획 수립',
+          '4. 졸업앨범 업체 선정 및 관리',
+          '5. 행사 진행 및 정리',
+        ],
+        relatedDocuments: ['졸업명렬표', '졸업대장', '입학식 계획'],
+        deadline: '2월 졸업식, 3월 입학식',
+      },
+      {
+        id: 'gyomu-005',
+        name: '학교운영위원회 운영',
+        category: '위원회',
+        frequency: 'monthly',
+        description: '학운위 회의 준비 및 운영',
+        procedure: [
+          '1. 안건 수합 (각 부서)',
+          '2. 회의 자료 작성',
+          '3. 위원 소집 통보 (7일 전)',
+          '4. 회의 진행 및 기록',
+          '5. 회의록 작성 및 공개',
+        ],
+        relatedDocuments: ['학운위 회의록', '안건 자료', '심의 결과 통보'],
+        tips: [
+          '정기회의는 매월 1회 이상',
+          '임시회의 개최 시 5일 전 통보',
+        ],
+      },
+      {
+        id: 'gyomu-006',
+        name: '교원 복무 관리',
+        category: '인사관리',
+        frequency: 'daily',
+        description: '출장, 휴가, 연수 등 복무 관리',
+        procedure: [
+          '1. NEIS를 통한 휴가/출장 신청 접수',
+          '2. 결재 진행',
+          '3. 보강 또는 대체교사 배정',
+          '4. 복무 현황 관리',
+        ],
+        relatedDocuments: ['휴가 신청서', '출장 신청서', '연수 이수증'],
+        tips: [
+          '연가는 전년도 이월분 먼저 사용',
+          '병가 4일 이상 진단서 필요',
+        ],
+      },
+    ],
+    relatedSystems: ['NEIS', 'K-에듀파인', '정부24', '나이스 학부모서비스'],
+    annualSchedule: [
+      { month: 2, tasks: ['졸업식 준비', '신학년 학급편성', '인사발령 처리'] },
+      { month: 3, tasks: ['입학식', '학운위 구성', '교육계획 수립'] },
+      { month: 6, tasks: ['1학기 학생부 마감', '통지표 준비'] },
+      { month: 7, tasks: ['1학기 종업식', '여름방학 계획'] },
+      { month: 8, tasks: ['2학기 개학 준비'] },
+      { month: 11, tasks: ['신입생 예비소집', '취학통지서 발송'] },
+      { month: 12, tasks: ['2학기 학생부 마감', '겨울방학 준비'] },
+    ],
+    tips: [
+      '나이스 업데이트 시 변경사항 확인 필수',
+      '학적 관련 민원은 개인정보 보호 주의',
+      '학운위 회의록은 홈페이지 공개 의무',
+    ],
+    references: [
+      '학교생활기록 작성 및 관리지침(교육부 훈령)',
+      '초중등교육법 시행령',
+      '경기도교육청 학교업무 매뉴얼',
+    ],
+  },
+
+  // ========== 연구부 ==========
+  {
+    id: 'dept-yeongu',
+    departmentId: 'yeongu',
+    departmentName: '연구부',
+    description: '교원 연수, 장학, 교육과정 연구 등 교육 역량 강화를 담당',
+    keyResponsibilities: [
+      '교육과정 연구 및 개발',
+      '교원 직무연수 계획 및 관리',
+      '수업 연구 및 장학 활동',
+      '방과후학교 운영',
+      '교육실습생 지도',
+      '각종 연구학교 운영',
+    ],
+    tasks: [
+      {
+        id: 'yeongu-001',
+        name: '교원 연수 관리',
+        category: '연수',
+        frequency: 'yearly',
+        description: '교원 직무연수, 자율연수 계획 및 이수 관리',
+        procedure: [
+          '1. 연간 연수 계획 수립',
+          '2. 연수 수요 조사',
+          '3. 연수 신청 안내 및 접수',
+          '4. 연수 이수 현황 관리',
+          '5. NEIS 연수 이력 등록',
+        ],
+        relatedDocuments: ['연수 계획서', '연수 이수증', '연수 신청서'],
+        tips: [
+          '의무연수 시간 충족 여부 확인',
+          '원격연수는 NEIS 자동 연계',
+        ],
+      },
+      {
+        id: 'yeongu-002',
+        name: '방과후학교 운영',
+        category: '방과후',
+        frequency: 'semester',
+        description: '방과후학교 프로그램 계획, 운영, 정산',
+        procedure: [
+          '1. 방과후학교 운영 계획 수립',
+          '2. 강사 채용 공고 및 선발',
+          '3. 프로그램 수요조사',
+          '4. 수강 신청 접수 및 반 편성',
+          '5. 수강료 수납 및 강사료 지급',
+          '6. 만족도 조사 및 평가',
+        ],
+        relatedDocuments: ['방과후학교 계획서', '강사 계약서', '수강 신청서'],
+        tips: [
+          '자유수강권 대상자 우선 배정',
+          '만족도 조사 결과 환류',
+        ],
+      },
+      {
+        id: 'yeongu-003',
+        name: '수업 연구 및 공개수업',
+        category: '장학',
+        frequency: 'semester',
+        description: '수업 연구회, 공개수업 운영',
+        procedure: [
+          '1. 수업 연구 주제 선정',
+          '2. 수업 설계 및 교수학습과정안 작성',
+          '3. 공개수업 일정 수립',
+          '4. 수업 참관 및 협의회',
+          '5. 피드백 및 환류',
+        ],
+        relatedDocuments: ['교수학습과정안', '수업 참관록', '협의회 기록'],
+      },
+      {
+        id: 'yeongu-004',
+        name: '교육실습 운영',
+        category: '실습',
+        frequency: 'yearly',
+        description: '예비교사 교육실습 지도',
+        procedure: [
+          '1. 실습생 배정 요청 접수',
+          '2. 지도교사 배정',
+          '3. 실습 오리엔테이션',
+          '4. 수업 참관 및 실습 지도',
+          '5. 실습 평가 및 성적 통보',
+        ],
+        relatedDocuments: ['교육실습 협조공문', '실습 평가서'],
+        deadline: '4~5월, 9~10월',
+      },
+    ],
+    relatedSystems: ['NEIS', '중앙교육연수원', '방과후학교포털'],
+    annualSchedule: [
+      { month: 2, tasks: ['연간 연수 계획 수립', '방과후 강사 채용 공고'] },
+      { month: 3, tasks: ['방과후학교 개강', '수업 연구회 조직'] },
+      { month: 4, tasks: ['교육실습생 지도', '공개수업 계획'] },
+      { month: 5, tasks: ['공개수업의 날 운영'] },
+      { month: 7, tasks: ['1학기 방과후 정산', '하계 연수 안내'] },
+      { month: 8, tasks: ['2학기 방과후 계획'] },
+      { month: 11, tasks: ['교원능력개발평가'] },
+      { month: 12, tasks: ['연수 이수 현황 정리'] },
+    ],
+    tips: [
+      '방과후학교 회계는 학교회계와 별도 관리',
+      '강사 4대 보험 처리 확인',
+    ],
+    references: [
+      '방과후학교 운영 가이드라인(교육부)',
+      '교원연수 운영 지침',
+    ],
+  },
+
+  // ========== 생활지도부 ==========
+  {
+    id: 'dept-saenghwal',
+    departmentId: 'saenghwal',
+    departmentName: '생활지도부',
+    description: '학생 생활지도, 학교폭력 예방 및 대응, 안전한 학교 문화 조성',
+    keyResponsibilities: [
+      '학생 생활지도 및 상담',
+      '학교폭력 예방 및 사안 처리',
+      '학교폭력대책심의위원회 운영',
+      '학생자치활동 지원',
+      '출결 관리 지도',
+      '교권보호 업무',
+    ],
+    tasks: [
+      {
+        id: 'saenghwal-001',
+        name: '학교폭력 예방교육',
+        category: '예방',
+        frequency: 'quarterly',
+        description: '학생, 교직원, 학부모 대상 학교폭력 예방교육 실시',
+        procedure: [
+          '1. 학기별 예방교육 계획 수립',
+          '2. 교육 자료 및 강사 섭외',
+          '3. 학생/교직원/학부모 대상 교육 실시',
+          '4. NEIS 실적 입력',
+          '5. 교육 결과 보고',
+        ],
+        relatedDocuments: ['예방교육 계획서', '실시 결과 보고서'],
+        tips: [
+          '학기당 1회 이상 실시 의무',
+          '어울림 프로그램 활용',
+        ],
+      },
+      {
+        id: 'saenghwal-002',
+        name: '학교폭력 사안 처리',
+        category: '사안처리',
+        frequency: 'as_needed',
+        description: '학교폭력 신고 접수부터 심의, 조치까지의 전 과정',
+        procedure: [
+          '1. 사안 인지 및 신고 접수',
+          '2. 즉시 피해학생 보호조치',
+          '3. 사안 조사 (48시간 이내)',
+          '4. 전담기구 회의',
+          '5. 심의위원회 요청 여부 결정',
+          '6. 교육지원청 심의위원회 개최 요청',
+          '7. 조치 결과 통보 및 이행',
+        ],
+        relatedDocuments: ['사안 접수대장', '조사 보고서', '심의 요청서', '조치 결과 통보서'],
+        tips: [
+          '사안 인지 즉시 보호자 통보',
+          '모든 과정 기록 보존',
+        ],
+        cautions: [
+          '비밀 유지 의무',
+          '2차 가해 방지',
+          '가해/피해 분리 조치',
+        ],
+      },
+      {
+        id: 'saenghwal-003',
+        name: '학교폭력 실태조사',
+        category: '조사',
+        frequency: 'quarterly',
+        description: '교육부 주관 학교폭력 실태조사 실시',
+        procedure: [
+          '1. 조사 일정 및 방법 안내',
+          '2. 학생 대상 온라인 조사 실시',
+          '3. 미참여 학생 독려',
+          '4. 조사 결과 분석',
+          '5. 결과에 따른 대응 계획 수립',
+        ],
+        relatedDocuments: ['실태조사 안내문', '결과 분석 보고서'],
+        deadline: '교육부 지정 기간',
+      },
+      {
+        id: 'saenghwal-004',
+        name: '학생자치활동 지원',
+        category: '자치활동',
+        frequency: 'yearly',
+        description: '학생회 선거, 자치회의 등 학생자치활동 지원',
+        procedure: [
+          '1. 학생회 선거 계획 수립',
+          '2. 입후보 접수 및 선거운동',
+          '3. 투표 및 개표',
+          '4. 당선자 인준 및 임명장 수여',
+          '5. 자치회의 운영 지원',
+        ],
+        relatedDocuments: ['학생회 선거 공고', '선거 결과 보고서'],
+      },
+      {
+        id: 'saenghwal-005',
+        name: '출결 관리',
+        category: '출결',
+        frequency: 'daily',
+        description: '학생 출결 현황 관리 및 지도',
+        procedure: [
+          '1. 일일 출결 현황 파악',
+          '2. 결석 학생 사유 확인',
+          '3. NEIS 출결 입력 지도',
+          '4. 장기결석학생 관리',
+          '5. 출결 통계 분석',
+        ],
+        relatedDocuments: ['결석계', '출결 현황표'],
+        tips: [
+          '미인정결석 7일 이상 시 교육청 보고',
+          '학업중단위기학생 상담 연계',
+        ],
+      },
+    ],
+    relatedSystems: ['NEIS', '학교폭력신고센터(117)', '위(Wee)클래스'],
+    annualSchedule: [
+      { month: 3, tasks: ['학교폭력 실태조사(1차)', '예방교육 계획', '학생회 선거'] },
+      { month: 4, tasks: ['학교폭력예방교육', '어울림프로그램'] },
+      { month: 6, tasks: ['학교폭력 실태조사(2차)'] },
+      { month: 9, tasks: ['학교폭력 실태조사(3차)', '2학기 예방교육'] },
+      { month: 11, tasks: ['학교폭력 실태조사(4차)'] },
+    ],
+    tips: [
+      '학교폭력 사안은 48시간 내 조사 완료',
+      '학교폭력대책심의위원회는 교육지원청에서 운영',
+      '관계회복 프로그램 적극 활용',
+    ],
+    references: [
+      '학교폭력예방 및 대책에 관한 법률',
+      '학교폭력 사안처리 가이드북(교육부)',
+    ],
+  },
+
+  // ========== 안전부 ==========
+  {
+    id: 'dept-anjeon',
+    departmentId: 'anjeon',
+    departmentName: '안전부',
+    description: '학교 안전교육, 시설 안전관리, 재난 대응 업무 담당',
+    keyResponsibilities: [
+      '학생 안전교육 7대 영역 운영',
+      '학교시설 안전점검',
+      '재난대응 훈련',
+      '통학로 안전관리',
+      '학교안전공제회 업무',
+      '체험학습 안전관리',
+    ],
+    tasks: [
+      {
+        id: 'anjeon-001',
+        name: '안전교육 7대 영역 운영',
+        category: '안전교육',
+        frequency: 'yearly',
+        description: '생활안전, 교통안전, 폭력예방, 약물/사이버, 재난안전, 직업안전, 응급처치',
+        procedure: [
+          '1. 연간 안전교육 계획 수립 (51시간 이상)',
+          '2. 영역별 교육 자료 준비',
+          '3. 학년별/시기별 교육 실시',
+          '4. NEIS 실적 입력',
+          '5. 교육 결과 분석 및 환류',
+        ],
+        relatedDocuments: ['안전교육 계획서', '안전교육 실적표'],
+        tips: [
+          '초등 1-2학년: 안전한 생활 교과 64시간',
+          '실습/체험 위주 교육 권장',
+        ],
+      },
+      {
+        id: 'anjeon-002',
+        name: '학교시설 안전점검',
+        category: '시설안전',
+        frequency: 'monthly',
+        description: '매월 4일 안전점검의 날 시설물 점검',
+        procedure: [
+          '1. 점검 체크리스트 작성',
+          '2. 시설물 순회 점검',
+          '3. 위험 요소 발견 시 즉시 조치',
+          '4. 점검 결과 기록 및 보고',
+          '5. 미조치 사항 추적 관리',
+        ],
+        relatedDocuments: ['안전점검 체크리스트', '점검 결과 보고서'],
+        deadline: '매월 4일',
+        tips: [
+          '소방시설, 전기, 가스, 승강기 등 법정점검 병행',
+        ],
+      },
+      {
+        id: 'anjeon-003',
+        name: '재난대응 훈련',
+        category: '재난안전',
+        frequency: 'quarterly',
+        description: '화재, 지진, 태풍 등 재난대피훈련 실시',
+        procedure: [
+          '1. 훈련 계획 수립',
+          '2. 교직원/학생 사전 교육',
+          '3. 훈련 실시 (예고/비예고)',
+          '4. 훈련 결과 평가',
+          '5. 개선사항 반영',
+        ],
+        relatedDocuments: ['재난대응 훈련 계획', '대피경로도', '훈련 결과 보고서'],
+        tips: [
+          '연 2회 이상 실시 의무',
+          '소방서 합동훈련 권장',
+        ],
+      },
+      {
+        id: 'anjeon-004',
+        name: '학교안전공제회 업무',
+        category: '공제회',
+        frequency: 'as_needed',
+        description: '학생 안전사고 발생 시 공제급여 청구',
+        procedure: [
+          '1. 사고 발생 즉시 응급처치',
+          '2. 사고 경위 조사 및 기록',
+          '3. 공제급여 청구 서류 준비',
+          '4. 학교안전공제회 온라인 청구',
+          '5. 결과 통보 및 급여 지급',
+        ],
+        relatedDocuments: ['사고보고서', '진료비 영수증', '진단서'],
+        tips: [
+          '사고 발생 3년 이내 청구',
+          '교육활동 중 사고만 해당',
+        ],
+      },
+      {
+        id: 'anjeon-005',
+        name: '생존수영교육',
+        category: '안전교육',
+        frequency: 'yearly',
+        description: '초등 3-6학년 생존수영교육 실시',
+        procedure: [
+          '1. 수영장 계약 및 일정 확정',
+          '2. 학부모 동의서 수합',
+          '3. 건강상태 확인서 수합',
+          '4. 안전교육 후 실기 교육',
+          '5. 이수 현황 NEIS 입력',
+        ],
+        relatedDocuments: ['수영교육 계획', '동의서', '건강상태 확인서'],
+        tips: [
+          '학년당 10시간 이상 권장',
+          '이론+실기 병행',
+        ],
+      },
+    ],
+    relatedSystems: ['학교안전공제회', '학교안전정보센터', 'NEIS'],
+    annualSchedule: [
+      { month: 3, tasks: ['안전교육 계획 수립', '학교안전계획 수립'] },
+      { month: 4, tasks: ['봄 현장체험학습 안전점검', '화재대피훈련'] },
+      { month: 6, tasks: ['생존수영교육', '물놀이 안전교육'] },
+      { month: 7, tasks: ['여름방학 안전교육'] },
+      { month: 9, tasks: ['지진대피훈련', '가을 현장체험학습 안전점검'] },
+      { month: 12, tasks: ['겨울방학 안전교육', '연간 안전교육 실적 정리'] },
+    ],
+    tips: [
+      '체험학습 2주 전 안전계획서 교육청 제출',
+      '안전사고 발생 시 즉시 보고체계 가동',
+    ],
+    references: [
+      '학교안전사고 예방 및 보상에 관한 법률',
+      '학교 안전교육 실시 기준',
+    ],
+  },
+
+  // ========== 정보부 ==========
+  {
+    id: 'dept-jeongbo',
+    departmentId: 'jeongbo',
+    departmentName: '정보부',
+    description: 'ICT 환경 구축, 정보화 교육, 개인정보 보호 업무 담당',
+    keyResponsibilities: [
+      '학교 정보화 기본 계획 수립',
+      '컴퓨터실/스마트기기 관리',
+      '교내 네트워크 및 서버 관리',
+      '개인정보 보호 업무',
+      '정보통신윤리교육',
+      '소프트웨어(SW) 교육 지원',
+      '학교 홈페이지 관리',
+    ],
+    tasks: [
+      {
+        id: 'jeongbo-001',
+        name: '정보기기 관리',
+        category: '기기관리',
+        frequency: 'monthly',
+        description: 'PC, 태블릿, 프린터 등 정보기기 유지보수',
+        procedure: [
+          '1. 정보기기 현황 파악',
+          '2. 정기 점검 실시',
+          '3. 고장 접수 및 수리',
+          '4. 소프트웨어 업데이트',
+          '5. 기기 대장 관리',
+        ],
+        relatedDocuments: ['정보기기 대장', '수리 현황표'],
+        tips: [
+          '3년 이상 노후장비 교체 검토',
+          'OS 및 백신 자동 업데이트 설정',
+        ],
+      },
+      {
+        id: 'jeongbo-002',
+        name: '개인정보 보호',
+        category: '정보보호',
+        frequency: 'yearly',
+        description: '개인정보 파일 관리, 교육, 점검',
+        procedure: [
+          '1. 개인정보 관리 계획 수립',
+          '2. 개인정보 파일 현황 파악',
+          '3. 교직원 개인정보 보호 교육',
+          '4. 자체 점검 실시',
+          '5. 개인정보 파기 현황 관리',
+        ],
+        relatedDocuments: ['개인정보 처리방침', '점검 결과 보고서'],
+        tips: [
+          '연 1회 이상 교직원 교육 필수',
+          '개인정보 파일 암호화 저장',
+        ],
+      },
+      {
+        id: 'jeongbo-003',
+        name: '정보통신윤리교육',
+        category: '윤리교육',
+        frequency: 'semester',
+        description: '사이버폭력 예방, 저작권, 인터넷 윤리 교육',
+        procedure: [
+          '1. 교육 계획 수립',
+          '2. 교육 자료 준비 (학년 수준별)',
+          '3. 학급별 교육 실시',
+          '4. 가정통신문 발송',
+          '5. 실적 정리',
+        ],
+        relatedDocuments: ['정보윤리교육 계획', '가정통신문'],
+      },
+      {
+        id: 'jeongbo-004',
+        name: '학교 홈페이지 관리',
+        category: '홈페이지',
+        frequency: 'weekly',
+        description: '학교 홈페이지 운영 및 콘텐츠 관리',
+        procedure: [
+          '1. 게시물 등록 및 관리',
+          '2. 개인정보 노출 점검',
+          '3. 메뉴 및 디자인 관리',
+          '4. 접근성 점검',
+          '5. 게시물 연한 관리 (5년)',
+        ],
+        relatedDocuments: ['홈페이지 운영 계획'],
+        tips: [
+          '개인정보 마스킹 처리',
+          '사진 게재 시 동의서 확인',
+        ],
+      },
+      {
+        id: 'jeongbo-005',
+        name: 'SW/AI 교육 지원',
+        category: '교육지원',
+        frequency: 'yearly',
+        description: '소프트웨어 및 인공지능 교육 지원',
+        procedure: [
+          '1. SW/AI 교육 계획 수립',
+          '2. 교육 기자재 확보',
+          '3. 교원 연수 지원',
+          '4. 교육과정 운영 지원',
+          '5. 관련 대회 안내 및 참가',
+        ],
+        relatedDocuments: ['SW교육 계획서', '기자재 현황'],
+      },
+    ],
+    relatedSystems: ['에듀넷', '학교 홈페이지 시스템', 'NEIS'],
+    annualSchedule: [
+      { month: 2, tasks: ['정보화 계획 수립', '기기 현황 점검'] },
+      { month: 3, tasks: ['개인정보 처리방침 갱신', '컴퓨터실 점검'] },
+      { month: 4, tasks: ['정보통신윤리교육 주간'] },
+      { month: 6, tasks: ['개인정보 자체점검'] },
+      { month: 9, tasks: ['2학기 정보윤리교육'] },
+      { month: 12, tasks: ['연간 정보화 실적 정리', '개인정보 파기'] },
+    ],
+    tips: [
+      '에듀넷 계정은 정기적 비밀번호 변경',
+      '학생 사진은 초상권 동의서 확인',
+    ],
+    references: [
+      '개인정보 보호법',
+      '학교 정보화 업무 매뉴얼(교육부)',
+    ],
+  },
+
+  // ========== 보건부 ==========
+  {
+    id: 'dept-bogeon',
+    departmentId: 'bogeon',
+    departmentName: '보건부',
+    description: '학생 건강관리, 보건교육, 감염병 예방 업무 담당',
+    keyResponsibilities: [
+      '학생 건강검사 및 관리',
+      '보건교육 및 응급처치',
+      '감염병 예방 및 관리',
+      '학교 환경위생 관리',
+      '성교육/약물오남용 예방교육',
+      '학교 의약품 관리',
+    ],
+    tasks: [
+      {
+        id: 'bogeon-001',
+        name: '건강검사',
+        category: '건강관리',
+        frequency: 'yearly',
+        description: '학생 건강검사 실시 및 결과 관리',
+        procedure: [
+          '1. 건강검사 계획 수립',
+          '2. 검진기관 선정 (입찰)',
+          '3. 건강조사표 배부 및 회수',
+          '4. 검진 실시 (신체계측, 구강, 시력 등)',
+          '5. 결과 NEIS 입력',
+          '6. 유소견자 통보 및 추후관리',
+        ],
+        relatedDocuments: ['건강검사 계획', '건강조사표', '결과통보서'],
+        deadline: '1학기 중',
+        tips: [
+          '1, 4학년 종합검진',
+          '매년 전 학년 신체계측, 시력검사',
+        ],
+      },
+      {
+        id: 'bogeon-002',
+        name: '감염병 관리',
+        category: '감염병',
+        frequency: 'as_needed',
+        description: '감염병 발생 시 대응 및 예방',
+        procedure: [
+          '1. 감염병 발생 인지',
+          '2. 환자 격리 및 귀가 조치',
+          '3. 교육청/보건소 즉시 보고',
+          '4. 방역 소독 실시',
+          '5. 가정통신문 발송',
+          '6. 추가 환자 발생 모니터링',
+        ],
+        relatedDocuments: ['감염병 발생 보고서', '가정통신문', '방역 일지'],
+        tips: [
+          '법정 감염병은 즉시 보고 의무',
+          '출석인정결석 처리',
+        ],
+        cautions: [
+          '감염병별 등교중지 기간 준수',
+          '개인정보 보호 주의',
+        ],
+      },
+      {
+        id: 'bogeon-003',
+        name: '보건교육',
+        category: '교육',
+        frequency: 'yearly',
+        description: '체계적인 보건교육 실시',
+        procedure: [
+          '1. 연간 보건교육 계획 수립',
+          '2. 학년별 교육 내용 선정',
+          '3. 보건교육 실시 (17시간 이상)',
+          '4. NEIS 실적 입력',
+          '5. 교육 결과 분석',
+        ],
+        relatedDocuments: ['보건교육 계획', '교육 자료'],
+        tips: [
+          '성교육, 약물오남용예방교육 포함',
+          '체험형 교육 권장',
+        ],
+      },
+      {
+        id: 'bogeon-004',
+        name: '응급환자 처치',
+        category: '응급처치',
+        frequency: 'daily',
+        description: '학교 내 응급상황 대응',
+        procedure: [
+          '1. 응급상황 인지',
+          '2. 응급처치 실시',
+          '3. 필요시 119 신고',
+          '4. 보호자 연락',
+          '5. 처치 기록 작성',
+        ],
+        relatedDocuments: ['응급처치 일지', '보건일지'],
+        tips: [
+          '에피펜 보유 학생 파악',
+          '알레르기 학생 명단 교직원 공유',
+        ],
+      },
+      {
+        id: 'bogeon-005',
+        name: '학교 환경위생 점검',
+        category: '환경위생',
+        frequency: 'monthly',
+        description: '교실 환경, 먹는물 등 위생 점검',
+        procedure: [
+          '1. 환경위생 점검 계획',
+          '2. 교실 조도, 환기 점검',
+          '3. 먹는물 수질 검사',
+          '4. 개선 필요 사항 조치',
+          '5. 점검 결과 기록',
+        ],
+        relatedDocuments: ['환경위생 점검표', '수질검사 결과'],
+      },
+    ],
+    relatedSystems: ['NEIS', '학생건강정보센터', '질병관리청'],
+    annualSchedule: [
+      { month: 3, tasks: ['건강검사 계획', '건강조사표 배부'] },
+      { month: 4, tasks: ['건강검사 실시', '결핵검사'] },
+      { month: 5, tasks: ['성폭력예방교육', '건강검사 결과 입력'] },
+      { month: 6, tasks: ['여름철 감염병 예방교육'] },
+      { month: 9, tasks: ['인플루엔자 예방접종 안내'] },
+      { month: 10, tasks: ['겨울철 감염병 예방교육'] },
+    ],
+    tips: [
+      '보건교사 미배치교는 담당교사 지정',
+      '학교 의약품은 학교장 결재 후 구입',
+    ],
+    references: [
+      '학교보건법',
+      '학생 건강검사 규칙',
+      '학교 감염병 예방 관리 안내(교육부)',
+    ],
+  },
+
+  // ========== 급식부 ==========
+  {
+    id: 'dept-geupshik',
+    departmentId: 'geupshik',
+    departmentName: '급식부',
+    description: '학교급식 운영, 위생관리, 영양교육 담당',
+    keyResponsibilities: [
+      '급식 운영 계획 및 실시',
+      '식단 작성 및 영양관리',
+      '식재료 검수 및 관리',
+      '급식 위생관리',
+      '급식비 관리',
+      '영양상담 및 교육',
+    ],
+    tasks: [
+      {
+        id: 'geupshik-001',
+        name: '식단 작성',
+        category: '영양관리',
+        frequency: 'monthly',
+        description: '월별 식단 작성 및 영양 분석',
+        procedure: [
+          '1. 영양소 기준량 확인',
+          '2. 계절 식재료 반영한 식단 구성',
+          '3. 알레르기 유발식품 표시',
+          '4. 식단표 결재 및 게시',
+          '5. 학교 홈페이지 공개',
+        ],
+        relatedDocuments: ['월간 식단표', '영양분석표'],
+        tips: [
+          '학생 기호도 조사 반영',
+          '18종 알레르기 식품 표시 필수',
+        ],
+      },
+      {
+        id: 'geupshik-002',
+        name: '식재료 검수',
+        category: '위생관리',
+        frequency: 'daily',
+        description: '식재료 입고 시 품질 검수',
+        procedure: [
+          '1. 납품 식재료 확인',
+          '2. 품질 검수 (신선도, 유통기한 등)',
+          '3. 검수 기록 작성',
+          '4. 부적합 시 반품 처리',
+          '5. 적정 온도 보관',
+        ],
+        relatedDocuments: ['검수일지', '거래명세서'],
+        tips: [
+          '냉장(0-10℃), 냉동(-18℃ 이하)',
+          '유통기한 1/3 이상 남은 제품만 입고',
+        ],
+      },
+      {
+        id: 'geupshik-003',
+        name: '위생점검',
+        category: '위생관리',
+        frequency: 'daily',
+        description: '급식실 및 조리원 위생관리',
+        procedure: [
+          '1. 조리원 건강상태 확인',
+          '2. 개인위생 점검',
+          '3. 급식기구 소독 확인',
+          '4. 조리 온도 관리 (중심온도 75℃)',
+          '5. 위생점검 기록',
+        ],
+        relatedDocuments: ['위생점검일지', '조리원 건강기록부'],
+        tips: [
+          '조리종사자 연 2회 건강검진',
+          '조리실 온도 26℃ 이하 유지',
+        ],
+      },
+      {
+        id: 'geupshik-004',
+        name: '잔반 관리',
+        category: '운영관리',
+        frequency: 'daily',
+        description: '음식물 잔반량 측정 및 개선',
+        procedure: [
+          '1. 일일 잔반량 측정',
+          '2. 잔반 많은 메뉴 분석',
+          '3. 식단 개선 반영',
+          '4. 잔반 줄이기 캠페인',
+        ],
+        relatedDocuments: ['잔반 측정 기록표'],
+      },
+      {
+        id: 'geupshik-005',
+        name: '급식비 관리',
+        category: '예산관리',
+        frequency: 'monthly',
+        description: '급식비 수납 및 집행 관리',
+        procedure: [
+          '1. 급식비 산정 및 징수',
+          '2. 무상급식/지원대상자 관리',
+          '3. 식재료비 집행',
+          '4. 급식비 정산 및 공개',
+        ],
+        relatedDocuments: ['급식비 징수대장', '정산보고서'],
+      },
+      {
+        id: 'geupshik-006',
+        name: '영양교육',
+        category: '교육',
+        frequency: 'semester',
+        description: '학생 대상 영양교육 실시',
+        procedure: [
+          '1. 영양교육 계획 수립',
+          '2. 학년별 교육 내용 선정',
+          '3. 교육 실시',
+          '4. 실적 입력',
+        ],
+        relatedDocuments: ['영양교육 계획', '교육 자료'],
+      },
+    ],
+    relatedSystems: ['학교급식 전자조달시스템', '나이스', '학교급식정보센터'],
+    annualSchedule: [
+      { month: 2, tasks: ['급식 운영 계획', '급식업체 선정'] },
+      { month: 3, tasks: ['신학기 급식 시작', '알레르기 조사'] },
+      { month: 4, tasks: ['1분기 급식비 정산', '위생점검'] },
+      { month: 6, tasks: ['여름철 식중독 예방 강화'] },
+      { month: 7, tasks: ['방학 중 급식 정산'] },
+      { month: 9, tasks: ['추석 연휴 급식 계획'] },
+      { month: 12, tasks: ['연간 급식 운영 평가'] },
+    ],
+    tips: [
+      '보존식은 144시간(-18℃) 보관',
+      '교차오염 방지를 위한 구역 분리',
+    ],
+    references: [
+      '학교급식법',
+      '학교급식 위생관리 지침서(교육부)',
+      'HACCP 관리 기준',
+    ],
+  },
+
+  // ========== 돌봄부 ==========
+  {
+    id: 'dept-dolbom',
+    departmentId: 'dolbom',
+    departmentName: '돌봄부',
+    description: '초등돌봄교실 및 늘봄학교 운영 담당',
+    keyResponsibilities: [
+      '돌봄교실 운영 계획 수립',
+      '돌봄 대상자 선정 및 관리',
+      '돌봄전담사 관리',
+      '돌봄 프로그램 운영',
+      '간식 및 급식 관리',
+      '늘봄학교 프로그램 운영',
+    ],
+    tasks: [
+      {
+        id: 'dolbom-001',
+        name: '돌봄 대상자 선정',
+        category: '대상자관리',
+        frequency: 'semester',
+        description: '돌봄교실 대상자 선정 및 반 편성',
+        procedure: [
+          '1. 돌봄 수요 조사',
+          '2. 신청서 접수',
+          '3. 선정 기준에 따른 대상자 선정',
+          '4. 대기자 명단 관리',
+          '5. 반 편성 및 결과 통보',
+        ],
+        relatedDocuments: ['수요조사서', '신청서', '선정 결과 통보서'],
+        tips: [
+          '맞벌이, 저소득층, 한부모 가정 우선',
+          '대기자 발생 시 순번 관리',
+        ],
+      },
+      {
+        id: 'dolbom-002',
+        name: '돌봄 프로그램 운영',
+        category: '프로그램',
+        frequency: 'daily',
+        description: '돌봄교실 일과 운영',
+        procedure: [
+          '1. 출석 확인',
+          '2. 간식 제공',
+          '3. 프로그램 활동 (숙제지도, 특기적성 등)',
+          '4. 하교 지도',
+          '5. 일일 운영 기록',
+        ],
+        relatedDocuments: ['출석부', '일일 운영 일지'],
+      },
+      {
+        id: 'dolbom-003',
+        name: '돌봄전담사 관리',
+        category: '인력관리',
+        frequency: 'monthly',
+        description: '돌봄전담사 채용 및 복무 관리',
+        procedure: [
+          '1. 채용 공고 및 면접',
+          '2. 계약 체결',
+          '3. 복무 관리',
+          '4. 연수 지원',
+          '5. 근무 평가',
+        ],
+        relatedDocuments: ['채용 공고', '근로계약서', '출근부'],
+      },
+      {
+        id: 'dolbom-004',
+        name: '늘봄학교 프로그램',
+        category: '늘봄',
+        frequency: 'semester',
+        description: '늘봄학교 에듀케어/다양한 프로그램 운영',
+        procedure: [
+          '1. 프로그램 수요 조사',
+          '2. 강사 및 프로그램 섭외',
+          '3. 수강 신청 접수',
+          '4. 프로그램 운영',
+          '5. 만족도 조사',
+        ],
+        relatedDocuments: ['늘봄학교 계획서', '프로그램 안내'],
+        tips: [
+          '1학년 에듀케어 의무화',
+          '지역사회 연계 프로그램 활용',
+        ],
+      },
+    ],
+    relatedSystems: ['늘봄학교포털', 'NEIS', '방과후학교포털'],
+    annualSchedule: [
+      { month: 2, tasks: ['돌봄교실 운영 계획', '전담사 채용'] },
+      { month: 3, tasks: ['돌봄 대상자 선정', '늘봄학교 개강'] },
+      { month: 7, tasks: ['방학 중 돌봄 운영'] },
+      { month: 8, tasks: ['2학기 대상자 조정'] },
+      { month: 12, tasks: ['방학 중 돌봄 계획'] },
+    ],
+    tips: [
+      '오후돌봄(~17시), 저녁돌봄(~20시) 구분 운영',
+      '방학 중 돌봄은 별도 신청',
+    ],
+    references: [
+      '초등돌봄교실 운영 가이드라인(교육부)',
+      '늘봄학교 운영 매뉴얼',
+    ],
+  },
+
+  // ========== 체육부 ==========
+  {
+    id: 'dept-cheook',
+    departmentId: 'cheook',
+    departmentName: '체육부',
+    description: '학교 체육활동, 스포츠클럽, 체육대회 운영',
+    keyResponsibilities: [
+      '체육수업 지원',
+      '학교스포츠클럽 운영',
+      '체육대회 기획 및 운영',
+      '체육시설 관리',
+      '대외 체육대회 참가',
+      '학생건강체력평가(PAPS)',
+    ],
+    tasks: [
+      {
+        id: 'cheook-001',
+        name: '학교스포츠클럽 운영',
+        category: '스포츠클럽',
+        frequency: 'yearly',
+        description: '학교스포츠클럽 조직 및 운영',
+        procedure: [
+          '1. 종목별 스포츠클럽 조직',
+          '2. 학생 가입 신청 접수',
+          '3. 주간 활동 운영',
+          '4. 대회 참가 지원',
+          '5. 활동 기록 관리',
+        ],
+        relatedDocuments: ['스포츠클럽 계획', '가입신청서', '활동일지'],
+        tips: [
+          '학기당 2시간 이상 활동',
+          'NEIS 활동 기록 입력',
+        ],
+      },
+      {
+        id: 'cheook-002',
+        name: '체육대회 운영',
+        category: '행사',
+        frequency: 'yearly',
+        description: '학교 체육대회/운동회 기획 및 진행',
+        procedure: [
+          '1. 체육대회 계획 수립',
+          '2. 종목 선정 및 프로그램 구성',
+          '3. 운동장 라인 작업 및 준비',
+          '4. 행사 진행',
+          '5. 시상 및 정리',
+        ],
+        relatedDocuments: ['체육대회 계획', '프로그램 순서'],
+        tips: [
+          '우천 시 대체 계획 수립',
+          '열사병 예방 대책 마련',
+        ],
+      },
+      {
+        id: 'cheook-003',
+        name: 'PAPS 측정',
+        category: '체력측정',
+        frequency: 'yearly',
+        description: '학생건강체력평가 실시',
+        procedure: [
+          '1. PAPS 측정 계획 수립',
+          '2. 측정 항목별 실시',
+          '3. 결과 NEIS 입력',
+          '4. 결과 통보',
+          '5. 건강체력교실 운영 (저체력 학생)',
+        ],
+        relatedDocuments: ['PAPS 측정 계획', '결과 통보서'],
+        deadline: '6월까지 완료',
+      },
+    ],
+    relatedSystems: ['학교체육포털', 'NEIS', 'PAPS시스템'],
+    annualSchedule: [
+      { month: 3, tasks: ['스포츠클럽 조직', '체육대회 계획'] },
+      { month: 4, tasks: ['PAPS 측정 준비'] },
+      { month: 5, tasks: ['PAPS 측정 실시'] },
+      { month: 9, tasks: ['체육대회', '교내대회'] },
+      { month: 10, tasks: ['대외 체육대회 참가'] },
+    ],
+    tips: [
+      '체육수업 시 안전사고 예방 철저',
+      '운동부 운영 시 학생인권 보호',
+    ],
+    references: [
+      '학교체육 진흥법',
+      '학교스포츠클럽 운영 지침',
+    ],
+  },
+];
+
+// 부서 목록
+export const departmentList = [
+  { id: 'gyomu', name: '교무부', icon: '📋', color: '#3B82F6' },
+  { id: 'yeongu', name: '연구부', icon: '📚', color: '#8B5CF6' },
+  { id: 'saenghwal', name: '생활지도부', icon: '🤝', color: '#10B981' },
+  { id: 'anjeon', name: '안전부', icon: '🛡️', color: '#EF4444' },
+  { id: 'jeongbo', name: '정보부', icon: '💻', color: '#06B6D4' },
+  { id: 'bogeon', name: '보건부', icon: '🏥', color: '#EC4899' },
+  { id: 'geupshik', name: '급식부', icon: '🍽️', color: '#F59E0B' },
+  { id: 'dolbom', name: '돌봄부', icon: '🏠', color: '#84CC16' },
+  { id: 'cheook', name: '체육부', icon: '⚽', color: '#F97316' },
+];

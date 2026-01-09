@@ -160,7 +160,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarImage src="/avatars/teacher.png" alt="프로필" />
+                <AvatarImage src="/avatars/teacher.svg" alt="프로필" />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>
