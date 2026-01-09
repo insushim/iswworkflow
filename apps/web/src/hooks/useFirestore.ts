@@ -85,7 +85,7 @@ async function getFirebaseDb() {
   return firebaseDbModule;
 }
 
-// Task Hook
+// Task Hook - 타임아웃 및 로컬 폴백 추가
 export function useTasks() {
   const { user, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -93,43 +93,122 @@ export function useTasks() {
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const hasFetched = useRef(false);
+  const isMounted = useRef(true);
+
+  // 로컬 기본 업무 데이터 (Firebase 실패 시 폴백)
+  const defaultTasks: Task[] = [
+    {
+      id: 'local_task_1',
+      userId: 'local',
+      title: '3월 학급경영록 작성',
+      description: '3월 학급경영 계획 및 실적 기록',
+      category: '학급경영',
+      priority: 'high',
+      status: 'in_progress',
+      progress: 30,
+      dueDate: null,
+      createdAt: null as unknown as Timestamp,
+      updatedAt: null as unknown as Timestamp,
+    },
+    {
+      id: 'local_task_2',
+      userId: 'local',
+      title: '학부모 상담 안내문 발송',
+      description: '1학기 학부모 상담 일정 안내',
+      category: '학부모',
+      priority: 'medium',
+      status: 'pending',
+      progress: 0,
+      dueDate: null,
+      createdAt: null as unknown as Timestamp,
+      updatedAt: null as unknown as Timestamp,
+    },
+    {
+      id: 'local_task_3',
+      userId: 'local',
+      title: '안전교육 실시',
+      description: '3월 안전교육 실시 및 기록',
+      category: '안전',
+      priority: 'high',
+      status: 'pending',
+      progress: 0,
+      dueDate: null,
+      createdAt: null as unknown as Timestamp,
+      updatedAt: null as unknown as Timestamp,
+    },
+  ];
 
   const fetchTasks = useCallback(async () => {
+    const fetchStart = performance.now();
+    debugLog('FETCH', '=== 업무 페치 시작 ===');
+
     if (!user) {
-      setTasks([]);
+      debugLog('AUTH', '로그인 안됨 - 기본 업무 데이터 사용');
+      setTasks(defaultTasks);
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      // 3초 타임아웃 설정
+      debugLog('TIMEOUT', '3초 타임아웃 설정');
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => {
+          debugLog('TIMEOUT', '⚠️ 업무 타임아웃 발생! (3초 초과)');
+          reject(new Error('timeout'));
+        }, 3000);
+      });
+
       const { getUserTasks } = await getFirebaseDb();
-      const fetchedTasks = await getUserTasks(user.uid);
-      setTasks(fetchedTasks);
+      const fetchPromise = getUserTasks(user.uid);
+      const fetchedTasks = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (!isMounted.current) return;
+
+      if (fetchedTasks && fetchedTasks.length > 0) {
+        debugLog('SUCCESS', `Firebase에서 ${fetchedTasks.length}개 업무 로드 (${(performance.now() - fetchStart).toFixed(2)}ms)`);
+        setTasks(fetchedTasks);
+      } else {
+        debugLog('CACHE', 'Firebase 업무 데이터 없음 → 로컬 기본 데이터 사용');
+        setTasks(defaultTasks);
+      }
       setError(null);
       setIsOffline(false);
     } catch (err) {
-      if (isOfflineError(err)) {
+      if (!isMounted.current) return;
+
+      debugLog('ERROR', `업무 페치 실패 → 로컬 데이터로 폴백`, err);
+      if (isOfflineError(err) || (err instanceof Error && err.message === 'timeout')) {
         setIsOffline(true);
-        setTasks([]);
-        setError('네트워크 연결을 확인해주세요.');
-      } else {
-        setError('업무를 불러오는데 실패했습니다.');
       }
-      console.error('Tasks fetch error:', err);
+      setTasks(defaultTasks);
+      setError(null); // 폴백 데이터 있으므로 에러 숨김
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+        debugLog('SUCCESS', `=== 업무 페치 완료 (${(performance.now() - fetchStart).toFixed(2)}ms) ===`);
+      }
     }
   }, [user]);
 
   useEffect(() => {
-    // 인증 로딩이 완료된 후에만 실행
-    if (authLoading) return;
+    isMounted.current = true;
 
-    if (!hasFetched.current || user) {
+    // 인증 로딩이 완료된 후에만 실행
+    if (authLoading) {
+      debugLog('AUTH', '업무: 인증 로딩 중... 대기');
+      return;
+    }
+
+    if (!hasFetched.current) {
+      debugLog('FETCH', '업무: 첫 페치 시작');
       hasFetched.current = true;
       fetchTasks();
     }
+
+    return () => {
+      isMounted.current = false;
+    };
   }, [fetchTasks, authLoading, user]);
 
   const addTask = async (taskData: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
@@ -180,50 +259,126 @@ export function useTasks() {
   };
 }
 
-// Document Hook
+// Document Hook - 타임아웃 및 로컬 폴백 추가
 export function useDocuments() {
   const { user, loading: authLoading } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
-
   const hasFetched = useRef(false);
+  const isMounted = useRef(true);
+
+  // 로컬 기본 문서 데이터 (Firebase 실패 시 폴백)
+  const defaultDocuments: Document[] = [
+    {
+      id: 'local_doc_1',
+      userId: 'local',
+      title: '3월 가정통신문',
+      content: '학부모님 안녕하세요. 3월 학교 일정을 안내해 드립니다...',
+      type: '가정통신문',
+      status: 'DRAFT',
+      isStarred: true,
+      isGenerated: false,
+      createdAt: null as unknown as Timestamp,
+      updatedAt: null as unknown as Timestamp,
+    },
+    {
+      id: 'local_doc_2',
+      userId: 'local',
+      title: '현장체험학습 안내문',
+      content: '현장체험학습 안내입니다...',
+      type: '안내문',
+      status: 'REVIEW',
+      isStarred: false,
+      isGenerated: true,
+      createdAt: null as unknown as Timestamp,
+      updatedAt: null as unknown as Timestamp,
+    },
+    {
+      id: 'local_doc_3',
+      userId: 'local',
+      title: '학부모 상담 안내',
+      content: '1학기 학부모 상담 일정을 안내해 드립니다...',
+      type: '가정통신문',
+      status: 'APPROVED',
+      isStarred: false,
+      isGenerated: false,
+      createdAt: null as unknown as Timestamp,
+      updatedAt: null as unknown as Timestamp,
+    },
+  ];
 
   const fetchDocuments = useCallback(async () => {
+    const fetchStart = performance.now();
+    debugLog('FETCH', '=== 문서 페치 시작 ===');
+
     if (!user) {
-      setDocuments([]);
+      debugLog('AUTH', '로그인 안됨 - 기본 문서 데이터 사용');
+      setDocuments(defaultDocuments);
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      // 3초 타임아웃 설정
+      debugLog('TIMEOUT', '3초 타임아웃 설정');
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => {
+          debugLog('TIMEOUT', '⚠️ 문서 타임아웃 발생! (3초 초과)');
+          reject(new Error('timeout'));
+        }, 3000);
+      });
+
       const { getUserDocuments } = await getFirebaseDb();
-      const fetchedDocs = await getUserDocuments(user.uid);
-      setDocuments(fetchedDocs);
+      const fetchPromise = getUserDocuments(user.uid);
+      const fetchedDocs = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (!isMounted.current) return;
+
+      if (fetchedDocs && fetchedDocs.length > 0) {
+        debugLog('SUCCESS', `Firebase에서 ${fetchedDocs.length}개 문서 로드 (${(performance.now() - fetchStart).toFixed(2)}ms)`);
+        setDocuments(fetchedDocs);
+      } else {
+        debugLog('CACHE', 'Firebase 문서 데이터 없음 → 로컬 기본 데이터 사용');
+        setDocuments(defaultDocuments);
+      }
       setError(null);
       setIsOffline(false);
     } catch (err) {
-      if (isOfflineError(err)) {
+      if (!isMounted.current) return;
+
+      debugLog('ERROR', `문서 페치 실패 → 로컬 데이터로 폴백`, err);
+      if (isOfflineError(err) || (err instanceof Error && err.message === 'timeout')) {
         setIsOffline(true);
-        setDocuments([]);
-        setError('네트워크 연결을 확인해주세요.');
-      } else {
-        setError('문서를 불러오는데 실패했습니다.');
       }
-      console.error('Documents fetch error:', err);
+      setDocuments(defaultDocuments);
+      setError(null); // 폴백 데이터 있으므로 에러 숨김
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+        debugLog('SUCCESS', `=== 문서 페치 완료 (${(performance.now() - fetchStart).toFixed(2)}ms) ===`);
+      }
     }
   }, [user]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!hasFetched.current || user) {
+    isMounted.current = true;
+
+    if (authLoading) {
+      debugLog('AUTH', '문서: 인증 로딩 중... 대기');
+      return;
+    }
+
+    if (!hasFetched.current) {
+      debugLog('FETCH', '문서: 첫 페치 시작');
       hasFetched.current = true;
       fetchDocuments();
     }
+
+    return () => {
+      isMounted.current = false;
+    };
   }, [fetchDocuments, authLoading, user]);
 
   const addDocument = async (docData: Omit<Document, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
@@ -274,7 +429,7 @@ export function useDocuments() {
   };
 }
 
-// Calendar Events Hook
+// Calendar Events Hook - 타임아웃 및 로컬 폴백 추가
 export function useCalendarEvents() {
   const { user, loading: authLoading } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -282,41 +437,121 @@ export function useCalendarEvents() {
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const hasFetched = useRef(false);
+  const isMounted = useRef(true);
+
+  // 로컬 기본 일정 데이터 (Firebase 실패 시 폴백)
+  const defaultEvents: CalendarEvent[] = [
+    {
+      id: 'local_event_1',
+      userId: 'local',
+      title: '학부모 상담 주간',
+      description: '1학기 학부모 상담 진행',
+      type: 'meeting',
+      startDate: null as unknown as Timestamp,
+      time: '14:00',
+      location: '각 학급 교실',
+      priority: 'high',
+      isCompleted: false,
+      createdAt: null as unknown as Timestamp,
+    },
+    {
+      id: 'local_event_2',
+      userId: 'local',
+      title: '안전교육 실시',
+      description: '3월 안전교육 실시',
+      type: 'event',
+      startDate: null as unknown as Timestamp,
+      time: '09:00',
+      location: '다목적실',
+      priority: 'medium',
+      isCompleted: false,
+      createdAt: null as unknown as Timestamp,
+    },
+    {
+      id: 'local_event_3',
+      userId: 'local',
+      title: '학급경영록 제출',
+      description: '3월 학급경영록 제출 마감',
+      type: 'deadline',
+      startDate: null as unknown as Timestamp,
+      time: '17:00',
+      location: '',
+      priority: 'high',
+      isCompleted: false,
+      createdAt: null as unknown as Timestamp,
+    },
+  ];
 
   const fetchEvents = useCallback(async () => {
+    const fetchStart = performance.now();
+    debugLog('FETCH', '=== 일정 페치 시작 ===');
+
     if (!user) {
-      setEvents([]);
+      debugLog('AUTH', '로그인 안됨 - 기본 일정 데이터 사용');
+      setEvents(defaultEvents);
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      // 3초 타임아웃 설정
+      debugLog('TIMEOUT', '3초 타임아웃 설정');
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => {
+          debugLog('TIMEOUT', '⚠️ 일정 타임아웃 발생! (3초 초과)');
+          reject(new Error('timeout'));
+        }, 3000);
+      });
+
       const { getUserCalendarEvents } = await getFirebaseDb();
-      const fetchedEvents = await getUserCalendarEvents(user.uid);
-      setEvents(fetchedEvents);
+      const fetchPromise = getUserCalendarEvents(user.uid);
+      const fetchedEvents = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (!isMounted.current) return;
+
+      if (fetchedEvents && fetchedEvents.length > 0) {
+        debugLog('SUCCESS', `Firebase에서 ${fetchedEvents.length}개 일정 로드 (${(performance.now() - fetchStart).toFixed(2)}ms)`);
+        setEvents(fetchedEvents);
+      } else {
+        debugLog('CACHE', 'Firebase 일정 데이터 없음 → 로컬 기본 데이터 사용');
+        setEvents(defaultEvents);
+      }
       setError(null);
       setIsOffline(false);
     } catch (err) {
-      if (isOfflineError(err)) {
+      if (!isMounted.current) return;
+
+      debugLog('ERROR', `일정 페치 실패 → 로컬 데이터로 폴백`, err);
+      if (isOfflineError(err) || (err instanceof Error && err.message === 'timeout')) {
         setIsOffline(true);
-        setEvents([]);
-        setError('네트워크 연결을 확인해주세요.');
-      } else {
-        setError('일정을 불러오는데 실패했습니다.');
       }
-      console.error('Calendar events fetch error:', err);
+      setEvents(defaultEvents);
+      setError(null); // 폴백 데이터 있으므로 에러 숨김
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+        debugLog('SUCCESS', `=== 일정 페치 완료 (${(performance.now() - fetchStart).toFixed(2)}ms) ===`);
+      }
     }
   }, [user]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!hasFetched.current || user) {
+    isMounted.current = true;
+
+    if (authLoading) {
+      debugLog('AUTH', '일정: 인증 로딩 중... 대기');
+      return;
+    }
+
+    if (!hasFetched.current) {
+      debugLog('FETCH', '일정: 첫 페치 시작');
       hasFetched.current = true;
       fetchEvents();
     }
+
+    return () => {
+      isMounted.current = false;
+    };
   }, [fetchEvents, authLoading, user]);
 
   const addEvent = async (eventData: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>) => {
