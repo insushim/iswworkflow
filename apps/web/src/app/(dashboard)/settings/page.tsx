@@ -160,13 +160,12 @@ export default function SettingsPage() {
       ? formData.roles.filter((r) => r !== role)
       : [...formData.roles, role];
 
-    console.log('[Settings] 역할 토글:', { role, newRoles });
     setFormData({ ...formData, roles: newRoles });
     try {
       await updateSettings({ roles: newRoles });
-      console.log('[Settings] 역할 저장 성공:', newRoles);
+      alert(`✅ "${role}" 저장 완료! 선택된 역할: ${newRoles.join(', ') || '없음'}`);
     } catch (err) {
-      console.error('[Settings] 역할 저장 실패:', err);
+      alert(`❌ 저장 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
     }
   };
 
