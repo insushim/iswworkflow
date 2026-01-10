@@ -795,11 +795,15 @@ export function useUserSettings() {
 
   // 낙관적 업데이트: 먼저 UI 업데이트 후 서버에 저장
   const updateSettings = async (updates: Partial<UserSettings>) => {
+    console.log('[useUserSettings] updateSettings 시작 - user:', user?.uid, 'updates:', updates);
+
     if (!user) {
-      console.error('[useUserSettings] updateSettings 실패: 사용자가 로그인하지 않음');
+      console.error('[useUserSettings] ❌ updateSettings 실패: 사용자가 로그인하지 않음');
+      alert('로그인이 필요합니다. 다시 로그인해주세요.');
       return;
     }
 
+    console.log('[useUserSettings] ✅ 사용자 확인됨:', user.uid);
     console.log('[useUserSettings] updateSettings 호출:', updates);
     debugLog('FETCH', '설정 저장 시작', updates);
 
