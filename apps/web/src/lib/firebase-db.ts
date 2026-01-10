@@ -358,13 +358,28 @@ export async function getUserSettings(userId: string) {
 }
 
 export async function saveUserSettings(userId: string, settings: Partial<UserSettings>) {
-  const db = await getDb();
-  const settingsRef = doc(db, Collections.USER_SETTINGS, userId);
-  await setDoc(settingsRef, {
-    ...settings,
-    userId,
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
+  const startTime = performance.now();
+  console.log('🟢 [saveUserSettings] 시작', { userId, settings });
+
+  try {
+    console.log('🟢 [saveUserSettings] getDb() 호출 중...', `+${(performance.now() - startTime).toFixed(0)}ms`);
+    const db = await getDb();
+    console.log('🟢 [saveUserSettings] getDb() 완료', `+${(performance.now() - startTime).toFixed(0)}ms`);
+
+    const settingsRef = doc(db, Collections.USER_SETTINGS, userId);
+    console.log('🟢 [saveUserSettings] setDoc() 호출 중...', `+${(performance.now() - startTime).toFixed(0)}ms`);
+
+    await setDoc(settingsRef, {
+      ...settings,
+      userId,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    console.log('🟢 [saveUserSettings] setDoc() 완료!', `+${(performance.now() - startTime).toFixed(0)}ms`);
+  } catch (error) {
+    console.error('🔴 [saveUserSettings] 에러 발생', `+${(performance.now() - startTime).toFixed(0)}ms`, error);
+    throw error;
+  }
 }
 
 // 초기 워크플로우 데이터 생성 (관리자용)

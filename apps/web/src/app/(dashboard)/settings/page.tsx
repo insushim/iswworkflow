@@ -1,8 +1,8 @@
 'use client';
 
-// 🔴 버전 9.0 - 저장 타임아웃 15초로 증가 + 디버그 로깅 추가
-const BUILD_VERSION = 'v9.0-TIMEOUT-FIX';
-console.log('🔴🔴🔴 [Settings] 버전 9.0 - 타임아웃 수정 🔴🔴🔴');
+// 🔴 버전 10.0 - saveUserSettings 상세 로깅 추가
+const BUILD_VERSION = 'v10.0-DETAILED-LOG';
+console.log('🔴🔴🔴 [Settings] 버전 10.0 - 상세 로깅 🔴🔴🔴');
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
