@@ -120,6 +120,7 @@ export interface UserSettings {
   school: string;
   classInfo: string;
   roles: string[];
+  educationOfficeId?: string; // 시도교육청 ID
   notifications: {
     email: boolean;
     push: boolean;

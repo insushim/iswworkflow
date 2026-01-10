@@ -749,6 +749,11 @@ export function useUserSettings() {
       const fetchedSettings = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (isMounted.current) {
+        debugLog('SUCCESS', '사용자 설정 로드 성공', fetchedSettings);
+        console.log('[useUserSettings] 로드된 설정:', {
+          roles: (fetchedSettings as unknown as { roles?: string[] })?.roles || [],
+          customTasks: (fetchedSettings as unknown as { customTasks?: string[] })?.customTasks || [],
+        });
         setSettings(fetchedSettings);
         setError(null);
       }
@@ -790,19 +795,37 @@ export function useUserSettings() {
 
   // 낙관적 업데이트: 먼저 UI 업데이트 후 서버에 저장
   const updateSettings = async (updates: Partial<UserSettings>) => {
-    if (!user) return;
+    if (!user) {
+      console.error('[useUserSettings] updateSettings 실패: 사용자가 로그인하지 않음');
+      return;
+    }
+
+    console.log('[useUserSettings] updateSettings 호출:', updates);
+    debugLog('FETCH', '설정 저장 시작', updates);
 
     // 낙관적 업데이트 - 즉시 UI 반영
+    const previousSettings = settings;
     setSettings(prev => prev ? { ...prev, ...updates } as UserSettings : null);
 
     try {
+      // 5초 타임아웃 적용
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('저장 시간 초과')), 5000);
+      });
+
       const { saveUserSettings } = await getFirebaseDb();
-      await saveUserSettings(user.uid, updates);
+      const savePromise = saveUserSettings(user.uid, updates);
+      await Promise.race([savePromise, timeoutPromise]);
+
+      console.log('[useUserSettings] 설정 저장 성공:', updates);
+      debugLog('SUCCESS', '설정 저장 완료', updates);
     } catch (err) {
       // 실패시 원래 상태로 롤백
-      fetchSettings();
-      setError('설정 저장에 실패했습니다.');
-      console.error(err);
+      debugLog('ERROR', '설정 저장 실패', err);
+      setSettings(previousSettings);
+      // 저장 에러는 전체 페이지 에러로 표시하지 않음 (호출자가 처리)
+      console.error('설정 저장 실패:', err);
+      throw err; // 호출자가 에러를 처리할 수 있도록 재throw
     }
   };
 

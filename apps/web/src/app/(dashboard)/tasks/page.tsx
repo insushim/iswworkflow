@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,10 +38,13 @@ import {
   Loader2,
   Trash2,
   Edit,
+  Star,
+  Sparkles,
 } from 'lucide-react';
-import { useTasks } from '@/hooks/useFirestore';
+import { useTasks, useUserSettings } from '@/hooks/useFirestore';
 import { Task } from '@/lib/firebase-db';
 import { Timestamp } from 'firebase/firestore';
+import { dutyToTaskCategoryMapping, getMatchingCategories } from '@/data/departments';
 
 const priorityConfig = {
   high: { label: '긴급', color: 'bg-red-500', textColor: 'text-red-700', bgColor: 'bg-red-50' },
@@ -59,6 +62,7 @@ const categories = ['전체', '학급경영', '학부모', '체험학습', '안�
 
 export default function TasksPage() {
   const { tasks, loading, error, addTask, editTask, removeTask } = useTasks();
+  const { settings } = useUserSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -66,6 +70,27 @@ export default function TasksPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 사용자 설정에서 업무 정보 가져오기
+  const extSettings = settings as unknown as { roles?: string[]; customTasks?: string[] };
+  const userRoles = extSettings?.roles || [];
+  const userCustomTasks = extSettings?.customTasks || [];
+  const allUserDuties = [...userRoles, ...userCustomTasks];
+
+  // 디버깅용 로그
+  console.log('[Tasks] 설정 로드:', { settings, userRoles, userCustomTasks, allUserDuties });
+
+  // 사용자 업무에 맞는 카테고리 찾기
+  const matchedCategories = useMemo(() => {
+    const result = getMatchingCategories(allUserDuties, dutyToTaskCategoryMapping);
+    console.log('[Tasks] 매칭된 카테고리:', result);
+    return result;
+  }, [allUserDuties]);
+
+  // 업무가 사용자 설정과 매칭되는지 확인
+  const isMatchedTask = (task: Task) => {
+    return matchedCategories.includes(task.category);
+  };
 
   // New task form state
   const [newTask, setNewTask] = useState({
@@ -78,12 +103,28 @@ export default function TasksPage() {
     progress: 0,
   });
 
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === '전체' || task.category === selectedCategory;
-    const matchesStatus = !selectedStatus || task.status === selectedStatus;
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // 필터링 및 정렬 (사용자 업무 우선)
+  const filteredTasks = useMemo(() => {
+    let result = tasks.filter((task) => {
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === '전체' || task.category === selectedCategory;
+      const matchesStatus = !selectedStatus || task.status === selectedStatus;
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+
+    // 사용자 업무가 있으면 매칭되는 업무 우선 정렬
+    if (allUserDuties.length > 0) {
+      result = [...result].sort((a, b) => {
+        const aMatched = isMatchedTask(a);
+        const bMatched = isMatchedTask(b);
+        if (aMatched && !bMatched) return -1;
+        if (!aMatched && bMatched) return 1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [tasks, searchQuery, selectedCategory, selectedStatus, allUserDuties, matchedCategories]);
 
   const taskStats = {
     total: tasks.length,
@@ -384,6 +425,38 @@ export default function TasksPage() {
         </Card>
       </div>
 
+      {/* 나의 업무 안내 카드 */}
+      {matchedCategories.length > 0 && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-4">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary mb-1">나의 업무 카테고리</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  설정에서 선택한 업무와 관련된 카테고리가 우선 표시됩니다.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {matchedCategories.map((cat) => (
+                    <Badge
+                      key={cat}
+                      variant="secondary"
+                      className="bg-primary/20 text-primary border-primary/30 cursor-pointer hover:bg-primary/30"
+                      onClick={() => setSelectedCategory(cat)}
+                    >
+                      <Star className="h-3 w-3 mr-1 fill-primary" />
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
@@ -404,8 +477,11 @@ export default function TasksPage() {
                   variant={selectedCategory === category ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
-                  className="whitespace-nowrap"
+                  className={`whitespace-nowrap ${matchedCategories.includes(category) && category !== '전체' ? 'ring-1 ring-primary/50' : ''}`}
                 >
+                  {matchedCategories.includes(category) && category !== '전체' && (
+                    <Star className="h-3 w-3 mr-1 fill-primary text-primary" />
+                  )}
                   {category}
                 </Button>
               ))}
@@ -428,11 +504,12 @@ export default function TasksPage() {
               {filteredTasks.map((task) => {
                 const StatusIcon = statusConfig[task.status].icon;
                 const priority = priorityConfig[task.priority];
+                const matched = isMatchedTask(task);
 
                 return (
                   <div
                     key={task.id}
-                    className="p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                    className={`p-4 border rounded-lg hover:bg-accent/50 transition-colors ${matched ? 'border-primary/30 bg-primary/5' : ''}`}
                   >
                     <div className="flex items-start gap-4">
                       <div className={`mt-1 ${statusConfig[task.status].color}`}>
@@ -441,6 +518,12 @@ export default function TasksPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
+                          {matched && (
+                            <Badge variant="secondary" className="bg-primary/20 text-primary text-xs px-1.5 py-0">
+                              <Star className="h-2.5 w-2.5 mr-0.5 fill-primary" />
+                              나의 업무
+                            </Badge>
+                          )}
                           <h3 className="font-medium truncate">{task.title}</h3>
                         </div>
                         <p className="text-sm text-muted-foreground truncate mb-2">

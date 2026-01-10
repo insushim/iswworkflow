@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +34,12 @@ import {
   Loader2,
   AlertCircle,
   ChevronLeft,
+  Star,
+  Sparkles,
 } from 'lucide-react';
-import { useWorkflows, LocalWorkflow } from '@/hooks/useFirestore';
+import { useWorkflows, LocalWorkflow, useUserSettings } from '@/hooks/useFirestore';
 import { WorkflowStep } from '@/lib/firebase-db';
+import { dutyToWorkflowCategoryMapping, getMatchingCategories } from '@/data/departments';
 
 const categoryIcons: Record<string, React.ElementType> = {
   '학급경영': BookOpen,
@@ -57,18 +60,54 @@ const categories = ['전체', '학급경영', '학부모', '행사', '안전', '
 
 export default function WorkflowsPage() {
   const { workflows, progress, loading, error, updateProgress, getProgressForWorkflow } = useWorkflows();
+  const { settings } = useUserSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [selectedWorkflow, setSelectedWorkflow] = useState<LocalWorkflow | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
-  // 초기화 로직 제거 - useWorkflows 훅에서 로컬 기본 데이터 제공
+  // 사용자 설정에서 업무 정보 가져오기
+  const extSettings = settings as unknown as { roles?: string[]; customTasks?: string[] };
+  const userRoles = extSettings?.roles || [];
+  const userCustomTasks = extSettings?.customTasks || [];
+  const allUserDuties = [...userRoles, ...userCustomTasks];
 
-  const filteredWorkflows = workflows.filter((workflow) => {
-    const matchesSearch = workflow.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === '전체' || workflow.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // 디버깅용 로그
+  console.log('[Workflows] 설정 로드:', { settings, userRoles, userCustomTasks, allUserDuties });
+
+  // 사용자 업무에 맞는 카테고리 찾기
+  const matchedCategories = useMemo(() => {
+    const result = getMatchingCategories(allUserDuties, dutyToWorkflowCategoryMapping);
+    console.log('[Workflows] 매칭된 카테고리:', result);
+    return result;
+  }, [allUserDuties]);
+
+  // 워크플로우가 사용자 설정과 매칭되는지 확인
+  const isMatchedWorkflow = (workflow: LocalWorkflow) => {
+    return matchedCategories.includes(workflow.category);
+  };
+
+  // 필터링 및 정렬 (사용자 업무 우선)
+  const filteredWorkflows = useMemo(() => {
+    let result = workflows.filter((workflow) => {
+      const matchesSearch = workflow.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === '전체' || workflow.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+
+    // 사용자 업무가 있으면 매칭되는 워크플로우 우선 정렬
+    if (allUserDuties.length > 0) {
+      result = [...result].sort((a, b) => {
+        const aMatched = isMatchedWorkflow(a);
+        const bMatched = isMatchedWorkflow(b);
+        if (aMatched && !bMatched) return -1;
+        if (!aMatched && bMatched) return 1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [workflows, searchQuery, selectedCategory, allUserDuties, matchedCategories]);
 
   const getCompletedSteps = (workflowId: string): string[] => {
     const workflowProgress = getProgressForWorkflow(workflowId);
@@ -199,6 +238,38 @@ export default function WorkflowsPage() {
         </Card>
       </div>
 
+      {/* 나의 업무 안내 카드 */}
+      {matchedCategories.length > 0 && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-4">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary mb-1">나의 워크플로우 추천</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  설정에서 선택한 업무와 관련된 워크플로우가 우선 표시됩니다.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {matchedCategories.map((cat) => (
+                    <Badge
+                      key={cat}
+                      variant="secondary"
+                      className="bg-primary/20 text-primary border-primary/30 cursor-pointer hover:bg-primary/30"
+                      onClick={() => setSelectedCategory(cat)}
+                    >
+                      <Star className="h-3 w-3 mr-1 fill-primary" />
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
@@ -219,8 +290,11 @@ export default function WorkflowsPage() {
                   variant={selectedCategory === category ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
-                  className="whitespace-nowrap"
+                  className={`whitespace-nowrap ${matchedCategories.includes(category) && category !== '전체' ? 'ring-1 ring-primary/50' : ''}`}
                 >
+                  {matchedCategories.includes(category) && category !== '전체' && (
+                    <Star className="h-3 w-3 mr-1 fill-primary text-primary" />
+                  )}
                   {category}
                 </Button>
               ))}
@@ -236,11 +310,12 @@ export default function WorkflowsPage() {
           const completedSteps = getCompletedSteps(workflow.id || '');
           const progressValue = Math.round((completedSteps.length / workflow.totalSteps) * 100);
           const status = getWorkflowStatus(workflow);
+          const matched = isMatchedWorkflow(workflow);
 
           return (
             <Card
               key={workflow.id}
-              className="hover:shadow-md transition-all cursor-pointer group"
+              className={`hover:shadow-md transition-all cursor-pointer group ${matched ? 'border-primary/30 ring-1 ring-primary/20' : ''}`}
               onClick={() => openWorkflowDetail(workflow)}
             >
               <CardContent className="pt-4">
@@ -251,6 +326,8 @@ export default function WorkflowsPage() {
                         ? 'bg-green-100'
                         : status === 'in_progress'
                         ? 'bg-blue-100'
+                        : matched
+                        ? 'bg-primary/10'
                         : 'bg-gray-100'
                     }`}
                   >
@@ -260,6 +337,8 @@ export default function WorkflowsPage() {
                           ? 'text-green-600'
                           : status === 'in_progress'
                           ? 'text-blue-600'
+                          : matched
+                          ? 'text-primary'
                           : 'text-gray-600'
                       }`}
                     />
@@ -267,6 +346,12 @@ export default function WorkflowsPage() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
+                      {matched && (
+                        <Badge variant="secondary" className="bg-primary/20 text-primary text-xs px-1.5 py-0">
+                          <Star className="h-2.5 w-2.5 mr-0.5 fill-primary" />
+                          추천
+                        </Badge>
+                      )}
                       <h3 className="font-semibold truncate">{workflow.title}</h3>
                       {status === 'completed' && (
                         <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />

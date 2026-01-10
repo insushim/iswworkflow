@@ -26,9 +26,12 @@ import {
   Shield,
   ClipboardList,
   MessageSquare,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useUserSettings } from '@/hooks/useFirestore';
+import { getEducationOfficeById } from '@/data/education-offices';
 
 interface Message {
   id: string;
@@ -174,6 +177,12 @@ export default function AIChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevMessagesLengthRef = useRef(0);
 
+  // 사용자 설정에서 교육청 정보 가져오기
+  const { settings } = useUserSettings();
+  const selectedOffice = settings?.educationOfficeId
+    ? getEducationOfficeById(settings.educationOfficeId)
+    : null;
+
   const checkScrollPosition = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -242,6 +251,8 @@ export default function AIChatPage() {
             ...messages.map((m) => ({ role: m.role, content: m.content })),
             { role: userMessage.role, content: userMessage.content },
           ],
+          // 선택된 교육청 정보 전달
+          educationOfficeId: settings?.educationOfficeId || null,
         }),
       });
 
@@ -313,6 +324,12 @@ export default function AIChatPage() {
             <GraduationCap className="h-3 w-3" />
             교사 맞춤형
           </Badge>
+          {selectedOffice && (
+            <Badge variant="outline" className="flex items-center gap-1 text-blue-600 border-blue-300">
+              <MapPin className="h-3 w-3" />
+              {selectedOffice.shortName}
+            </Badge>
+          )}
           {messages.length > 0 && (
             <Button
               variant="outline"

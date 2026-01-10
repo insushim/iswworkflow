@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,13 +12,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
@@ -27,12 +25,13 @@ import {
   FileText,
   Copy,
   Download,
-  X,
   Sparkles,
   ChevronRight,
   Check,
-  Clock,
   Star,
+  Wand2,
+  Loader2,
+  LayoutTemplate,
 } from 'lucide-react';
 import {
   documentTemplates,
@@ -52,10 +51,16 @@ interface DocumentGeneratorProps {
 }
 
 export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGeneratorProps) {
+  // 모드: ai (AI 자동작성) | template (템플릿 기반)
+  const [mode, setMode] = useState<'ai' | 'template'>('ai');
+  const [aiTitle, setAiTitle] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [generatedContent, setGeneratedContent] = useState('');
+  const [generatedType, setGeneratedType] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [step, setStep] = useState<'search' | 'customize' | 'preview'>('search');
   const [copied, setCopied] = useState(false);
@@ -127,20 +132,66 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
     URL.revokeObjectURL(url);
   };
 
+  // AI 자동 생성
+  const handleAIGenerate = async () => {
+    if (!aiTitle.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'ai-auto',
+          title: aiTitle.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('생성 실패');
+      }
+
+      const data = await response.json();
+      setGeneratedContent(data.document.content);
+      setGeneratedType(data.document.type);
+      setStep('preview');
+    } catch (error) {
+      console.error('AI 문서 생성 오류:', error);
+      alert('문서 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // AI 문서 저장
+  const handleSaveAIDocument = () => {
+    onGenerate(aiTitle, generatedContent, generatedType);
+    handleClose();
+  };
+
   // 닫기
   const handleClose = () => {
     setSearchQuery('');
     setSelectedTemplate(null);
     setVariables({});
     setGeneratedContent('');
+    setGeneratedType('');
     setStep('search');
+    setAiTitle('');
+    setMode('ai');
     onClose();
   };
 
   // 뒤로가기
   const handleBack = () => {
-    if (step === 'preview') setStep('customize');
-    else if (step === 'customize') {
+    if (step === 'preview') {
+      if (mode === 'ai') {
+        setStep('search');
+        setGeneratedContent('');
+      } else {
+        setStep('customize');
+      }
+    } else if (step === 'customize') {
       setSelectedTemplate(null);
       setStep('search');
     }
@@ -163,7 +214,8 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
                   공문서 자동 생성기
                 </DialogTitle>
                 <DialogDescription>
-                  {step === 'search' && '제목이나 키워드를 입력하면 적합한 양식을 찾아드립니다'}
+                  {step === 'search' && mode === 'ai' && '제목만 입력하면 AI가 전체 문서를 작성합니다'}
+                  {step === 'search' && mode === 'template' && '템플릿을 선택하고 내용을 입력하세요'}
                   {step === 'customize' && '필요한 정보를 입력하세요'}
                   {step === 'preview' && '생성된 문서를 확인하세요'}
                 </DialogDescription>
@@ -172,7 +224,7 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">
                 <Sparkles className="h-3 w-3 mr-1" />
-                {documentTemplates.length}+ 템플릿
+                AI 자동 작성
               </Badge>
             </div>
           </div>
@@ -182,17 +234,129 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
           {/* Step 1: Search & Select */}
           {step === 'search' && (
             <div className="space-y-4">
-              {/* 검색 입력 */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="예: 학부모 상담 안내, 현장체험학습, 방학..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 text-base"
-                  autoFocus
-                />
+              {/* 모드 선택 탭 */}
+              <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                <button
+                  onClick={() => setMode('ai')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-md transition-all ${
+                    mode === 'ai'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'hover:bg-muted-foreground/10'
+                  }`}
+                >
+                  <Wand2 className="h-4 w-4" />
+                  <span className="font-medium">AI 자동 작성</span>
+                  <Badge variant={mode === 'ai' ? 'secondary' : 'outline'} className="text-[10px]">
+                    추천
+                  </Badge>
+                </button>
+                <button
+                  onClick={() => setMode('template')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-md transition-all ${
+                    mode === 'template'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'hover:bg-muted-foreground/10'
+                  }`}
+                >
+                  <LayoutTemplate className="h-4 w-4" />
+                  <span className="font-medium">템플릿 사용</span>
+                </button>
               </div>
+
+              {/* AI 모드 */}
+              {mode === 'ai' && (
+                <div className="space-y-4">
+                  <Card className="border-primary/50 bg-gradient-to-br from-primary/5 to-primary/10">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 rounded-full bg-primary/20">
+                          <Wand2 className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="flex-1 space-y-4">
+                          <div>
+                            <h3 className="font-semibold text-lg">제목만 입력하세요</h3>
+                            <p className="text-sm text-muted-foreground">
+                              AI가 공문서 양식에 맞게 전체 내용을 자동으로 작성합니다
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="ai-title">문서 제목</Label>
+                            <Input
+                              id="ai-title"
+                              placeholder="예: 학부모 상담 주간 안내, 현장체험학습 동의서, 방학 중 안전교육..."
+                              value={aiTitle}
+                              onChange={(e) => setAiTitle(e.target.value)}
+                              className="h-12 text-base"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && aiTitle.trim()) {
+                                  handleAIGenerate();
+                                }
+                              }}
+                            />
+                          </div>
+                          <Button
+                            onClick={handleAIGenerate}
+                            disabled={!aiTitle.trim() || isGenerating}
+                            className="w-full h-12 text-base"
+                            size="lg"
+                          >
+                            {isGenerating ? (
+                              <>
+                                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                AI가 문서를 작성하고 있습니다...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-5 w-5 mr-2" />
+                                문서 자동 생성
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 예시 제목들 */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">자주 사용하는 제목 예시:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        '학부모 상담 주간 안내',
+                        '현장체험학습 참가 동의서',
+                        '방학 중 생활 안내',
+                        '학급 운영 계획',
+                        '수업 공개의 날 안내',
+                        '교육 기부 감사장',
+                      ].map((example) => (
+                        <button
+                          key={example}
+                          onClick={() => setAiTitle(example)}
+                          className="px-3 py-1.5 text-sm bg-muted hover:bg-muted/80 rounded-full transition-colors"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 템플릿 모드 */}
+              {mode === 'template' && (
+                <>
+                  {/* 검색 입력 */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="예: 학부모 상담 안내, 현장체험학습, 방학..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 h-12 text-base"
+                      autoFocus
+                    />
+                  </div>
 
               {/* 검색 결과 */}
               {searchQuery.length >= 2 && searchResults.length > 0 && (
@@ -302,6 +466,8 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
                   </Button>
                 ))}
               </div>
+                </>
+              )}
             </div>
           )}
 
@@ -425,7 +591,17 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
           {step === 'preview' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{variables['제목'] || selectedTemplate?.title}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">
+                    {mode === 'ai' ? aiTitle : (variables['제목'] || selectedTemplate?.title)}
+                  </h3>
+                  {mode === 'ai' && (
+                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      AI 생성
+                    </Badge>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleCopy}>
                     {copied ? (
@@ -450,7 +626,7 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
               <Card className="bg-white dark:bg-gray-950">
                 <CardContent className="p-0">
                   <ScrollArea className="h-[400px]">
-                    <pre className="p-6 text-sm font-mono whitespace-pre-wrap leading-relaxed">
+                    <pre className="p-6 text-sm whitespace-pre-wrap leading-relaxed">
                       {generatedContent}
                     </pre>
                   </ScrollArea>
@@ -459,9 +635,9 @@ export function DocumentGenerator({ isOpen, onClose, onGenerate }: DocumentGener
 
               <div className="flex justify-between pt-4 border-t">
                 <Button variant="outline" onClick={handleBack}>
-                  수정하기
+                  {mode === 'ai' ? '다시 작성' : '수정하기'}
                 </Button>
-                <Button onClick={handleSaveDocument}>
+                <Button onClick={mode === 'ai' ? handleSaveAIDocument : handleSaveDocument}>
                   <FileText className="h-4 w-4 mr-2" />
                   문서함에 저장
                 </Button>

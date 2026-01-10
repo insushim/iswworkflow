@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,16 +40,18 @@ import {
   AlertCircle,
   FileEdit,
 } from 'lucide-react';
-import { useDocuments } from '@/hooks/useFirestore';
+import { useDocuments, useUserSettings } from '@/hooks/useFirestore';
 import { Document } from '@/lib/firebase-db';
 import { Timestamp } from 'firebase/firestore';
 import { DocumentGenerator } from '@/components/document-generator';
 import { documentCategories, popularTemplates } from '@/lib/document-templates';
+import { dutyToDocumentTypeMapping, getMatchingCategories } from '@/data/departments';
 
 const documentTypes = ['전체', '가정통신문', '계획서', '보고서', '안내문', '공문', '동의서', '신청서', '회의록', '기타'];
 
 export default function DocumentsPage() {
   const { documents, loading, error, addDocument, editDocument, removeDocument } = useDocuments();
+  const { settings } = useUserSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('전체');
   const [showGenerator, setShowGenerator] = useState(false);
@@ -62,6 +64,27 @@ export default function DocumentsPage() {
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 사용자 설정에서 업무 정보 가져오기
+  const extSettings = settings as unknown as { roles?: string[]; customTasks?: string[] };
+  const userRoles = extSettings?.roles || [];
+  const userCustomTasks = extSettings?.customTasks || [];
+  const allUserDuties = [...userRoles, ...userCustomTasks];
+
+  // 디버깅용 로그
+  console.log('[Documents] 설정 로드:', { settings, userRoles, userCustomTasks, allUserDuties });
+
+  // 사용자 업무에 맞는 문서 유형 찾기
+  const matchedDocTypes = useMemo(() => {
+    const result = getMatchingCategories(allUserDuties, dutyToDocumentTypeMapping);
+    console.log('[Documents] 매칭된 문서 유형:', result);
+    return result;
+  }, [allUserDuties]);
+
+  // 문서가 사용자 설정과 매칭되는지 확인
+  const isMatchedDocument = (doc: Document) => {
+    return matchedDocTypes.includes(doc.type);
+  };
 
   // New document form state
   const [newDocument, setNewDocument] = useState({
@@ -86,11 +109,27 @@ export default function DocumentsPage() {
     });
   };
 
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = selectedType === '전체' || doc.type === selectedType;
-    return matchesSearch && matchesType;
-  });
+  // 필터링 및 정렬 (사용자 업무 우선)
+  const filteredDocuments = useMemo(() => {
+    let result = documents.filter((doc) => {
+      const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = selectedType === '전체' || doc.type === selectedType;
+      return matchesSearch && matchesType;
+    });
+
+    // 사용자 업무가 있으면 매칭되는 문서 유형 우선 정렬
+    if (allUserDuties.length > 0) {
+      result = [...result].sort((a, b) => {
+        const aMatched = isMatchedDocument(a);
+        const bMatched = isMatchedDocument(b);
+        if (aMatched && !bMatched) return -1;
+        if (!aMatched && bMatched) return 1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [documents, searchQuery, selectedType, allUserDuties, matchedDocTypes]);
 
   const starredDocuments = documents.filter((doc) => doc.isStarred);
 
@@ -346,6 +385,38 @@ export default function DocumentsPage() {
         </Card>
       )}
 
+      {/* 나의 업무 문서 유형 안내 카드 */}
+      {matchedDocTypes.length > 0 && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-4">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary mb-1">추천 문서 유형</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  설정에서 선택한 업무와 관련된 문서 유형이 우선 표시됩니다.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {matchedDocTypes.map((type) => (
+                    <Badge
+                      key={type}
+                      variant="secondary"
+                      className="bg-primary/20 text-primary border-primary/30 cursor-pointer hover:bg-primary/30"
+                      onClick={() => setSelectedType(type)}
+                    >
+                      <Star className="h-3 w-3 mr-1 fill-primary" />
+                      {type}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
@@ -366,8 +437,11 @@ export default function DocumentsPage() {
                   variant={selectedType === type ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedType(type)}
-                  className="whitespace-nowrap"
+                  className={`whitespace-nowrap ${matchedDocTypes.includes(type) && type !== '전체' ? 'ring-1 ring-primary/50' : ''}`}
                 >
+                  {matchedDocTypes.includes(type) && type !== '전체' && (
+                    <Star className="h-3 w-3 mr-1 fill-primary text-primary" />
+                  )}
                   {type}
                 </Button>
               ))}
@@ -378,14 +452,22 @@ export default function DocumentsPage() {
 
       {/* Documents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredDocuments.map((doc) => (
-          <Card key={doc.id} className="hover:shadow-md transition-shadow">
+        {filteredDocuments.map((doc) => {
+          const matched = isMatchedDocument(doc);
+          return (
+          <Card key={doc.id} className={`hover:shadow-md transition-shadow ${matched ? 'border-primary/30 ring-1 ring-primary/20' : ''}`}>
             <CardContent className="pt-4">
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <FileText className="h-6 w-6 text-primary" />
+                <div className={`p-2 rounded-lg ${matched ? 'bg-primary/20' : 'bg-primary/10'}`}>
+                  <FileText className={`h-6 w-6 ${matched ? 'text-primary' : 'text-primary'}`} />
                 </div>
                 <div className="flex items-center gap-1">
+                  {matched && (
+                    <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                      <Star className="h-3 w-3 mr-1 fill-primary" />
+                      추천
+                    </Badge>
+                  )}
                   {doc.isGenerated && (
                     <Badge variant="secondary" className="text-xs">
                       <Sparkles className="h-3 w-3 mr-1" />
@@ -453,7 +535,8 @@ export default function DocumentsPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
 
         {/* New Document Card */}
         <Card

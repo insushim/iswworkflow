@@ -1,15 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateDocument } from '@/lib/gemini';
+import { generateDocument, generateOfficialDocument, generatePlanDocument, detectDocumentType } from '@/lib/gemini';
 
 export async function POST(request: NextRequest) {
   try {
-    const {
-      documentType,
-      title,
-      context,
-      variables,
-    } = await request.json();
+    const body = await request.json();
+    const { mode, title, documentType, context, variables } = body;
 
+    // AI 자동 작성 모드 (제목만으로 전체 문서 생성)
+    if (mode === 'ai-auto' && title) {
+      const detected = detectDocumentType(title);
+      let generatedContent: string;
+
+      // 문서 종류에 따라 다른 생성 함수 호출
+      if (detected.category === 'plan') {
+        // 계획서
+        generatedContent = await generatePlanDocument(title);
+      } else {
+        // 공문서 (기안문)
+        generatedContent = await generateOfficialDocument(title);
+      }
+
+      return NextResponse.json({
+        document: {
+          type: detected.type,
+          category: detected.category,
+          title: title,
+          content: generatedContent,
+          generatedAt: new Date().toISOString(),
+          mode: 'ai-auto',
+        },
+      });
+    }
+
+    // 기존 템플릿 기반 모드
     if (!documentType || !context) {
       return NextResponse.json(
         { error: 'documentType과 context가 필요합니다.' },

@@ -1,5 +1,7 @@
 'use client';
 
+console.log('🔴🔴🔴 [Settings] 페이지 로드됨 - 버전 2.0 🔴🔴🔴');
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +37,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettings } from '@/hooks/useFirestore';
 import { departments, roles as roleData, departmentsByCategory, categoryLabels, gradeTasks, specialTasks } from '@/data/departments';
+import { educationOffices, getEducationOfficeById, nationalResources } from '@/data/education-offices';
+import { MapPin, ExternalLink, Phone, FileText } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -48,6 +52,7 @@ export default function SettingsPage() {
     email: '',
     school: '',
     classInfo: '',
+    educationOfficeId: '', // 시도교육청
     roles: [] as string[],
     customTasks: [] as string[], // 사용자 정의 업무
     notifications: {
@@ -59,19 +64,34 @@ export default function SettingsPage() {
     theme: 'system' as 'light' | 'dark' | 'system',
   });
 
+  // 선택된 교육청 정보
+  const selectedOffice = formData.educationOfficeId
+    ? getEducationOfficeById(formData.educationOfficeId)
+    : null;
+
   // 사용자 정의 업무 추가 상태
   const [newCustomTask, setNewCustomTask] = useState('');
+
+  // 페이지 로드 확인 로그
+  useEffect(() => {
+    alert('🔴 Settings 페이지 버전 3.0 로드됨!');
+    console.log('🔴🔴🔴 [Settings] 컴포넌트 마운트됨 - 버전 3.0 🔴🔴🔴');
+    console.log('[Settings] user:', user);
+    console.log('[Settings] settings:', settings);
+  }, []);
 
   // Initialize form data from settings
   useEffect(() => {
     if (settings) {
+      const extSettings = settings as unknown as { customTasks?: string[]; educationOfficeId?: string };
       setFormData({
         displayName: settings.displayName || user?.displayName || '',
         email: settings.email || user?.email || '',
         school: settings.school || '',
         classInfo: settings.classInfo || '',
+        educationOfficeId: extSettings.educationOfficeId || '',
         roles: settings.roles || [],
-        customTasks: ((settings as unknown) as { customTasks?: string[] }).customTasks || [],
+        customTasks: extSettings.customTasks || [],
         notifications: settings.notifications || {
           email: true,
           push: true,
@@ -99,18 +119,37 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
+    console.log('[Settings] 프로필 저장 시작:', {
+      roles: formData.roles,
+      customTasks: formData.customTasks,
+    });
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateSettings({
         displayName: formData.displayName,
         email: formData.email,
         school: formData.school,
         classInfo: formData.classInfo,
         roles: formData.roles,
-      });
+        customTasks: formData.customTasks, // 사용자 정의 업무 추가
+        educationOfficeId: formData.educationOfficeId,
+      } as any);
+      console.log('[Settings] 프로필 저장 성공');
     } catch (err) {
-      console.error('프로필 저장 실패:', err);
+      console.error('[Settings] 프로필 저장 실패:', err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleEducationOfficeChange = async (officeId: string) => {
+    setFormData({ ...formData, educationOfficeId: officeId });
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateSettings({ educationOfficeId: officeId } as any);
+    } catch (err) {
+      console.error('교육청 설정 저장 실패:', err);
+      // 실패해도 UI는 유지 (낙관적 업데이트가 롤백됨)
     }
   };
 
@@ -119,8 +158,14 @@ export default function SettingsPage() {
       ? formData.roles.filter((r) => r !== role)
       : [...formData.roles, role];
 
+    console.log('[Settings] 역할 토글:', { role, newRoles });
     setFormData({ ...formData, roles: newRoles });
-    await updateSettings({ roles: newRoles });
+    try {
+      await updateSettings({ roles: newRoles });
+      console.log('[Settings] 역할 저장 성공:', newRoles);
+    } catch (err) {
+      console.error('[Settings] 역할 저장 실패:', err);
+    }
   };
 
   // 사용자 정의 업무 추가
@@ -131,18 +176,30 @@ export default function SettingsPage() {
       return;
     }
     const newCustomTasks = [...formData.customTasks, newCustomTask.trim()];
+    console.log('[Settings] 사용자 정의 업무 추가:', newCustomTask.trim());
     setFormData({ ...formData, customTasks: newCustomTasks });
     setNewCustomTask('');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateSettings({ customTasks: newCustomTasks } as any);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateSettings({ customTasks: newCustomTasks } as any);
+      console.log('[Settings] 사용자 정의 업무 저장 성공:', newCustomTasks);
+    } catch (err) {
+      console.error('[Settings] 사용자 정의 업무 추가 실패:', err);
+    }
   };
 
   // 사용자 정의 업무 삭제
   const handleRemoveCustomTask = async (task: string) => {
     const newCustomTasks = formData.customTasks.filter((t) => t !== task);
+    console.log('[Settings] 사용자 정의 업무 삭제:', task);
     setFormData({ ...formData, customTasks: newCustomTasks });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateSettings({ customTasks: newCustomTasks } as any);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateSettings({ customTasks: newCustomTasks } as any);
+      console.log('[Settings] 사용자 정의 업무 삭제 성공:', newCustomTasks);
+    } catch (err) {
+      console.error('[Settings] 사용자 정의 업무 삭제 실패:', err);
+    }
   };
 
   const handleToggleNotification = async (key: keyof typeof formData.notifications) => {
@@ -151,12 +208,20 @@ export default function SettingsPage() {
       [key]: !formData.notifications[key],
     };
     setFormData({ ...formData, notifications: newNotifications });
-    await updateSettings({ notifications: newNotifications });
+    try {
+      await updateSettings({ notifications: newNotifications });
+    } catch (err) {
+      console.error('알림 설정 저장 실패:', err);
+    }
   };
 
   const handleThemeChange = async (newTheme: 'light' | 'dark' | 'system') => {
     setFormData({ ...formData, theme: newTheme });
-    await updateSettings({ theme: newTheme });
+    try {
+      await updateSettings({ theme: newTheme });
+    } catch (err) {
+      console.error('테마 설정 저장 실패:', err);
+    }
   };
 
   const handleLogout = async () => {
@@ -287,7 +352,92 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  {/* 시도교육청 선택 */}
+                  <div className="mt-4">
+                    <label className="text-sm font-medium block mb-2">
+                      <MapPin className="h-4 w-4 inline mr-1" />
+                      소속 시도교육청
+                    </label>
+                    <select
+                      value={formData.educationOfficeId}
+                      onChange={(e) => handleEducationOfficeChange(e.target.value)}
+                      className="w-full p-2 border rounded-md bg-background"
+                    >
+                      <option value="">교육청을 선택하세요</option>
+                      {educationOffices.map((office) => (
+                        <option key={office.id} value={office.id}>
+                          {office.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      선택하면 해당 교육청의 매뉴얼, 연락처, 양식을 우선 제공합니다
+                    </p>
+                  </div>
+
+                  {/* 선택된 교육청 정보 표시 */}
+                  {selectedOffice && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <MapPin className="h-5 w-5 text-blue-600" />
+                        <h4 className="font-semibold text-blue-900">{selectedOffice.name}</h4>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-blue-500" />
+                          <span className="text-blue-800">{selectedOffice.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="h-4 w-4 text-blue-500" />
+                          <a
+                            href={selectedOffice.homepage}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {selectedOffice.homepage}
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* 주요 매뉴얼 */}
+                      {selectedOffice.manuals.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-blue-200">
+                          <p className="text-xs font-medium text-blue-700 mb-2">주요 매뉴얼</p>
+                          <div className="space-y-1">
+                            {selectedOffice.manuals.slice(0, 3).map((manual, idx) => (
+                              <a
+                                key={idx}
+                                href={manual.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                              >
+                                <FileText className="h-3 w-3" />
+                                {manual.title}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 긴급 연락처 */}
+                      <div className="mt-3 pt-3 border-t border-blue-200">
+                        <p className="text-xs font-medium text-blue-700 mb-2">긴급 연락처</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {selectedOffice.emergencyContacts.map((contact, idx) => (
+                            <div key={idx} className="flex items-center gap-1 text-blue-800">
+                              <span className="font-medium">{contact.name}:</span>
+                              <span>{contact.phone}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end mt-4">
                     <Button onClick={handleSaveProfile} disabled={isSaving}>
                       {isSaving ? (
                         <>
@@ -440,21 +590,46 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* 특수 업무 */}
+                  {/* 특수 업무 - 위원회 */}
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Briefcase className="h-4 w-4 text-cyan-500" />
-                      <h4 className="text-sm font-semibold text-cyan-700">특수 업무</h4>
-                      <span className="text-xs text-muted-foreground">(위원회/특별업무)</span>
+                      <h4 className="text-sm font-semibold text-cyan-700">특수 업무 (위원회/특별업무)</h4>
+                      <span className="text-xs text-muted-foreground">({specialTasks.length}개)</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {specialTasks.map((task) => {
+                      {specialTasks.slice(0, 10).map((task) => {
                         const isSelected = formData.roles.includes(task.name);
                         return (
                           <Badge
                             key={task.id}
                             variant={isSelected ? 'default' : 'outline'}
                             className={`cursor-pointer transition-all ${isSelected ? 'bg-cyan-600 hover:bg-cyan-700' : 'hover:bg-cyan-50 hover:border-cyan-300'}`}
+                            onClick={() => handleToggleRole(task.name)}
+                            title={task.description}
+                          >
+                            {isSelected && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {task.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 특수 업무 - 교육/안전 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Shield className="h-4 w-4 text-rose-500" />
+                      <h4 className="text-sm font-semibold text-rose-700">교육/안전 업무</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {specialTasks.slice(10).map((task) => {
+                        const isSelected = formData.roles.includes(task.name);
+                        return (
+                          <Badge
+                            key={task.id}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className={`cursor-pointer transition-all ${isSelected ? 'bg-rose-600 hover:bg-rose-700' : 'hover:bg-rose-50 hover:border-rose-300'}`}
                             onClick={() => handleToggleRole(task.name)}
                             title={task.description}
                           >
@@ -525,6 +700,26 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* 업무 분장 저장 버튼 */}
+                  <div className="mt-6 pt-4 border-t flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      ✓ 업무를 선택하면 업무분장 가이드, 업무목록, 워크플로우에서 관련 정보가 우선 표시됩니다.
+                    </p>
+                    <Button onClick={handleSaveProfile} disabled={isSaving} className="gap-2">
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          저장 중...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          업무 분장 저장
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </>

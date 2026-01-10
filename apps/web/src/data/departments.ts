@@ -536,7 +536,7 @@ export const specialTasks = [
   },
   {
     id: 'special_006',
-    name: '방송부/방송반',
+    name: '방송부',
     description: '학교 방송 시스템 운영, 방송반 학생 지도',
     department: '정보부',
     frequency: '매일',
@@ -568,10 +568,180 @@ export const specialTasks = [
   },
   {
     id: 'special_010',
-    name: '학교 축제',
+    name: '학교축제',
     description: '학교 축제/학예발표회 기획 및 운영',
     department: '예술부',
     frequency: '연 1-2회',
     tasks: ['행사 계획', '프로그램 구성', '무대/음향 준비', '리허설', '행사 운영', '정리']
+  },
+  // 추가 특수 업무 (업무분장 가이드와 연동)
+  {
+    id: 'special_011',
+    name: '교육복지우선지원',
+    description: '교육취약계층 학생 지원, 복지 프로그램 운영',
+    department: '교무부',
+    frequency: '연중',
+    tasks: ['대상학생 선정', '사례관리', '지원프로그램 운영', '네트워크 연계']
+  },
+  {
+    id: 'special_012',
+    name: '인권교육',
+    description: '학생 인권교육, 인권친화적 학교문화 조성',
+    department: '생활지도부',
+    frequency: '연 4회 이상',
+    tasks: ['인권교육 계획', '인권교육 실시', '인권실태조사', '인권상담']
+  },
+  {
+    id: 'special_013',
+    name: '민주시민교육',
+    description: '민주시민 역량 함양 교육',
+    department: '연구부',
+    frequency: '연중',
+    tasks: ['교육과정 연계', '학생자치 활성화', '민주시민교육 행사']
+  },
+  {
+    id: 'special_014',
+    name: '녹색어머니회',
+    description: '등하교 교통 지도 봉사단 운영',
+    department: '안전부',
+    frequency: '매일',
+    tasks: ['녹색어머니 모집', '당번 조정', '교통지도', '감사 행사']
+  },
+  {
+    id: 'special_015',
+    name: '학교안전공제회',
+    description: '학교안전사고 관련 공제 업무',
+    department: '안전부',
+    frequency: '수시',
+    tasks: ['사고 접수', '공제급여 청구', '심사청구', '결과 통보']
+  },
+  {
+    id: 'special_016',
+    name: '현장체험학습',
+    description: '교외 현장체험학습 계획 및 운영',
+    department: '학년부',
+    frequency: '연 2-4회',
+    tasks: ['장소 답사', '계획서 작성', '학부모 안내', '안전교육', '행사 운영', '결과 보고']
+  },
+  {
+    id: 'special_017',
+    name: '생존수영교육',
+    description: '초등학생 생존수영 교육 운영',
+    department: '체육부',
+    frequency: '연 1회',
+    tasks: ['수영장 섭외', '일정 조정', '안전교육', '수업 운영', '결과 보고']
+  },
+  {
+    id: 'special_018',
+    name: '학교스포츠클럽',
+    description: '학교스포츠클럽 조직 및 운영',
+    department: '체육부',
+    frequency: '연중',
+    tasks: ['종목 선정', '학생 모집', '강사 배정', '대회 참가', '실적 보고']
+  },
+  {
+    id: 'special_019',
+    name: '학생건강검사',
+    description: '학생 건강검진 및 건강기록 관리',
+    department: '보건부',
+    frequency: '연 1회',
+    tasks: ['검진 일정', '업체 선정', '사전 안내', '검진 실시', '결과 통보', '나이스 입력']
+  },
+  {
+    id: 'special_020',
+    name: '성교육',
+    description: '학생 성교육 및 성폭력 예방교육',
+    department: '보건부/생활지도부',
+    frequency: '연 4회 이상',
+    tasks: ['교육 계획', '외부강사 섭외', '교육 실시', '결과 보고']
   }
 ];
+
+// 업무분장 가이드 ID와 설정 업무 매핑 (연동용)
+export const dutyGuideMapping: Record<string, string[]> = {
+  // duties-guide ID: 관련 departments/specialTasks 이름들
+  'academic-affairs': ['교무부', '학교운영위원회', '학부모회', '인사자문위원회'],
+  'student-life': ['생활지도부', '학교폭력대책심의위원회', '인권교육'],
+  'class-teacher': ['학년부', '학급담임', '1학년 담임', '2학년 담임', '3학년 담임', '4학년 담임', '5학년 담임', '6학년 담임', '현장체험학습'],
+  'counseling': ['전문상담부', 'Wee클래스'],
+  'character-career': ['창의체험부', '민주시민교육'],
+  'education-welfare': ['교육복지우선지원', '다문화교육부'],
+  'special-education': ['특수교육부'],
+  'after-school': ['방과후부', '돌봄부'],
+  'health': ['보건부', '학생건강검사', '성교육'],
+  'meal-service': ['급식부'],
+  'safety': ['안전부', '녹색어머니회', '학교안전공제회'],
+  'research': ['연구부', '교원능력개발평가', '학교평가'],
+  'science': ['과학부'],
+  'physical-education': ['체육부', '생존수영교육', '학교스포츠클럽'],
+  'information': ['정보부', '방송부'],
+  'library': ['독서교육부'],
+};
+
+// 업무 -> 업무관리 카테고리 매핑 (tasks 페이지용)
+export const dutyToTaskCategoryMapping: Record<string, string[]> = {
+  '학급경영': ['학년부', '학급담임', '1학년 담임', '2학년 담임', '3학년 담임', '4학년 담임', '5학년 담임', '6학년 담임', '학교생활기록부'],
+  '학부모': ['학부모회', '학부모상담', '가정통신문', '현장체험학습'],
+  '체험학습': ['현장체험학습', '창의체험부', '현장학습'],
+  '안전': ['안전부', '학교안전공제회', '녹색어머니회', '생존수영교육', '안전교육'],
+  '교육과정': ['연구부', '교무부', '교원능력개발평가', '학교평가', '교과전담'],
+  '방과후': ['방과후부', '돌봄부', '늘봄학교'],
+  '생활기록': ['학교생활기록부', '나이스', 'NEIS', '생기부'],
+};
+
+// 업무 -> 워크플로우 카테고리 매핑 (workflows 페이지용)
+export const dutyToWorkflowCategoryMapping: Record<string, string[]> = {
+  '학급경영': ['학년부', '학급담임', '1학년 담임', '2학년 담임', '3학년 담임', '4학년 담임', '5학년 담임', '6학년 담임'],
+  '학부모': ['학부모회', '학부모상담'],
+  '행사': ['창의체험부', '학교축제', '운동회', '졸업앨범', '현장체험학습'],
+  '안전': ['안전부', '학교안전공제회', '녹색어머니회', '생존수영교육'],
+  '평가': ['연구부', '교원능력개발평가', '학교평가'],
+  '문서작성': ['교무부', '행정', '공문'],
+};
+
+// 업무 -> 문서 유형 매핑 (documents 페이지용)
+export const dutyToDocumentTypeMapping: Record<string, string[]> = {
+  '가정통신문': ['학부모회', '학년부', '학급담임', '현장체험학습'],
+  '계획서': ['연구부', '교무부', '창의체험부', '안전부'],
+  '보고서': ['연구부', '학교평가', '교원능력개발평가', '행정'],
+  '안내문': ['학부모회', '방과후부', '돌봄부', '급식부'],
+  '공문': ['교무부', '행정'],
+  '동의서': ['현장체험학습', '학부모상담', '개인정보'],
+  '신청서': ['방과후부', '돌봄부'],
+  '회의록': ['학교운영위원회', '학부모회', '교직원회의'],
+};
+
+// 사용자 업무에서 관련 카테고리 찾기 헬퍼 함수
+// 정확한 매칭: 사용자 업무와 매핑된 업무가 완전히 일치해야 함
+export function getMatchingCategories(
+  userDuties: string[],
+  mapping: Record<string, string[]>
+): string[] {
+  console.log('[Matching] 사용자 업무:', userDuties);
+
+  // 빈 배열이면 빈 배열 반환
+  if (!userDuties || userDuties.length === 0) {
+    console.log('[Matching] 사용자 업무가 없음 - 빈 배열 반환');
+    return [];
+  }
+
+  const matchedCategories: string[] = [];
+
+  Object.entries(mapping).forEach(([category, relatedDuties]) => {
+    // 정확한 매칭: 사용자 업무가 관련 업무 목록에 정확히 일치하는 경우
+    const hasMatch = relatedDuties.some(duty =>
+      userDuties.some(userDuty => userDuty === duty)
+    );
+
+    if (hasMatch && !matchedCategories.includes(category)) {
+      console.log(`[Matching] 카테고리 매칭됨: ${category}`, {
+        relatedDuties,
+        matchedWith: userDuties.filter(u => relatedDuties.includes(u))
+      });
+      matchedCategories.push(category);
+    }
+  });
+
+  console.log('[Matching] 최종 매칭된 카테고리:', matchedCategories);
+  return matchedCategories;
+}
