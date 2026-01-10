@@ -1,6 +1,8 @@
 'use client';
 
-console.log('🔴🔴🔴 [Settings] 페이지 로드됨 - 버전 6.0 FINAL 🔴🔴🔴');
+// 🔴 버전 7.0 - 205203 - 설정 저장 수정
+const BUILD_VERSION = 'v7.0-205203';
+console.log('🔴🔴🔴 [Settings] 페이지 로드됨 - ' + BUILD_VERSION + ' 🔴🔴🔴');
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -251,6 +253,8 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">
           계정 및 앱 설정을 관리합니다
         </p>
+        {/* 버전 표시 - 배포 확인용 */}
+        <p className="text-xs text-red-500 mt-1 font-mono">Build: {BUILD_VERSION}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
