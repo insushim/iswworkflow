@@ -795,6 +795,9 @@ export function useUserSettings() {
 
   // 낙관적 업데이트: 먼저 UI 업데이트 후 서버에 저장
   const updateSettings = async (updates: Partial<UserSettings>) => {
+    const startTime = performance.now();
+    console.log('🔵 [updateSettings] 시작', { updates, user: user?.uid });
+
     if (!user) {
       alert('❌ 로그인이 필요합니다. 다시 로그인해주세요.');
       throw new Error('로그인이 필요합니다');
@@ -807,19 +810,25 @@ export function useUserSettings() {
     setSettings(prev => prev ? { ...prev, ...updates } as UserSettings : null);
 
     try {
-      // 5초 타임아웃 적용
+      // 15초 타임아웃 적용 (증가됨)
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('저장 시간 초과')), 5000);
+        setTimeout(() => reject(new Error('저장 시간 초과 (15초)')), 15000);
       });
 
+      console.log('🔵 [updateSettings] Firebase 모듈 로딩 시작...', `+${(performance.now() - startTime).toFixed(0)}ms`);
       const { saveUserSettings } = await getFirebaseDb();
+      console.log('🔵 [updateSettings] Firebase 모듈 로딩 완료', `+${(performance.now() - startTime).toFixed(0)}ms`);
+
+      console.log('🔵 [updateSettings] Firestore 저장 시작...', `+${(performance.now() - startTime).toFixed(0)}ms`);
       const savePromise = saveUserSettings(user.uid, updates);
       await Promise.race([savePromise, timeoutPromise]);
+      console.log('🔵 [updateSettings] Firestore 저장 완료!', `+${(performance.now() - startTime).toFixed(0)}ms`);
 
       console.log('[useUserSettings] 설정 저장 성공:', updates);
       debugLog('SUCCESS', '설정 저장 완료', updates);
     } catch (err) {
       // 실패시 원래 상태로 롤백
+      console.log('🔴 [updateSettings] 실패', `+${(performance.now() - startTime).toFixed(0)}ms`, err);
       debugLog('ERROR', '설정 저장 실패', err);
       setSettings(previousSettings);
       // 저장 에러는 전체 페이지 에러로 표시하지 않음 (호출자가 처리)

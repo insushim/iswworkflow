@@ -1,8 +1,8 @@
 'use client';
 
-// 🔴 버전 8.0 - 215600 - 최종 배포 확인
-const BUILD_VERSION = 'v8.0-215600-FINAL';
-console.log('🔴🔴🔴 [Settings] 버전 8.0 FINAL 🔴🔴🔴');
+// 🔴 버전 9.0 - 저장 타임아웃 15초로 증가 + 디버그 로깅 추가
+const BUILD_VERSION = 'v9.0-TIMEOUT-FIX';
+console.log('🔴🔴🔴 [Settings] 버전 9.0 - 타임아웃 수정 🔴🔴🔴');
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
