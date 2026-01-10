@@ -74,13 +74,13 @@ export default function SettingsPage() {
 
   // 페이지 로드 확인 로그
   useEffect(() => {
-    console.log('🔴🔴🔴 [Settings] 컴포넌트 마운트됨 - 버전 4.0 🔴🔴🔴');
+    console.log('🔴🔴🔴 [Settings] 컴포넌트 마운트됨 - 버전 5.0 🔴🔴🔴');
     console.log('[Settings] user:', user);
     console.log('[Settings] user?.uid:', user?.uid);
     console.log('[Settings] settings:', settings);
-    console.log('[Settings] settingsLoading:', settingsLoading);
-    console.log('[Settings] settingsError:', settingsError);
-  }, [user, settings, settingsLoading, settingsError]);
+    console.log('[Settings] loading:', loading);
+    console.log('[Settings] error:', error);
+  }, [user, settings, loading, error]);
 
   // Initialize form data from settings
   useEffect(() => {
