@@ -1,8 +1,8 @@
 'use client';
 
-// 🔴 버전 7.0 - 205203 - 설정 저장 수정
-const BUILD_VERSION = 'v7.0-205203';
-console.log('🔴🔴🔴 [Settings] 페이지 로드됨 - ' + BUILD_VERSION + ' 🔴🔴🔴');
+// 🔴 버전 8.0 - 215600 - 최종 배포 확인
+const BUILD_VERSION = 'v8.0-215600-FINAL';
+console.log('🔴🔴🔴 [Settings] 버전 8.0 FINAL 🔴🔴🔴');
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
