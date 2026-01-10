@@ -1,6 +1,6 @@
 'use client';
 
-console.log('🔴🔴🔴 [Settings] 페이지 로드됨 - 버전 2.0 🔴🔴🔴');
+console.log('🔴🔴🔴 [Settings] 페이지 로드됨 - 버전 6.0 FINAL 🔴🔴🔴');
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,7 +74,7 @@ export default function SettingsPage() {
 
   // 페이지 로드 확인 로그
   useEffect(() => {
-    console.log('🔴🔴🔴 [Settings] 컴포넌트 마운트됨 - 버전 5.0 🔴🔴🔴');
+    console.log('🔴🔴🔴 [Settings] 컴포넌트 마운트됨 - 버전 6.0 FINAL 🔴🔴🔴');
     console.log('[Settings] user:', user);
     console.log('[Settings] user?.uid:', user?.uid);
     console.log('[Settings] settings:', settings);
