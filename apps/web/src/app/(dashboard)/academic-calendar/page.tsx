@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,9 +42,57 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { academicCalendarFull, type AcademicEvent as DbAcademicEvent } from '@/data/academic-calendar-full';
+
+// 데이터베이스 이벤트를 UI 이벤트로 변환
+const convertDbEventsToUiEvents = (): Record<string, AcademicEvent[]> => {
+  const result: Record<string, AcademicEvent[]> = {};
+  const currentYear = new Date().getFullYear();
+
+  // 카테고리 매핑
+  const categoryMap: Record<string, AcademicEvent['type']> = {
+    ceremony: 'ceremony',
+    exam: 'exam',
+    event: 'event',
+    meeting: 'meeting',
+    deadline: 'exam',
+    vacation: 'vacation',
+    training: 'event',
+    inspection: 'meeting',
+  };
+
+  academicCalendarFull.forEach((event, index) => {
+    // 학사년도 계산 (3월~2월)
+    const year = event.month >= 3 ? currentYear : currentYear + 1;
+    const monthKey = `${year}-${String(event.month).padStart(2, '0')}`;
+
+    if (!result[monthKey]) {
+      result[monthKey] = [];
+    }
+
+    // 날짜 계산 (day가 없으면 week 기반으로 추정)
+    const day = event.day || (event.week ? event.week * 7 : 1);
+
+    result[monthKey].push({
+      id: event.id || `db-${index}`,
+      date: day,
+      title: event.title,
+      type: categoryMap[event.category] || 'event',
+      description: event.description,
+      checklist: event.checklist,
+      tips: event.tips,
+      relatedDocuments: event.relatedDocuments,
+      department: event.department,
+      priority: event.priority,
+    });
+  });
+
+  return result;
+};
 
 // 기본 2024-2025 학사일정 데이터
 const defaultAcademicEvents: Record<string, AcademicEvent[]> = {
@@ -132,9 +180,18 @@ interface AcademicEvent {
   date: number;
   title: string;
   type: EventType;
+  description?: string;
+  checklist?: string[];
+  tips?: string[];
+  relatedDocuments?: string[];
+  department?: string[];
+  priority?: 'high' | 'medium' | 'low';
 }
 
 type EventType = 'holiday' | 'vacation' | 'ceremony' | 'event' | 'exam' | 'meeting';
+
+// 데이터베이스 기반 학사일정 (하드코딩 대체)
+const dbAcademicEvents = convertDbEventsToUiEvents();
 
 const eventTypeConfig: Record<EventType, { label: string; color: string; icon: typeof Calendar }> = {
   holiday: { label: '공휴일', color: 'bg-red-100 text-red-700 border-red-200', icon: Sun },
@@ -179,7 +236,23 @@ const parseCalendarFile = async (file: File): Promise<AcademicEvent[]> => {
 
 export default function AcademicCalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [academicEvents, setAcademicEvents] = useState(defaultAcademicEvents);
+  // 데이터베이스 이벤트를 기본값으로, 하드코딩 데이터와 병합
+  const [academicEvents, setAcademicEvents] = useState(() => {
+    const merged = { ...defaultAcademicEvents };
+    Object.entries(dbAcademicEvents).forEach(([key, events]) => {
+      if (!merged[key]) merged[key] = [];
+      // 중복 제거하며 병합
+      const existingTitles = new Set(merged[key].map(e => e.title));
+      events.forEach(e => {
+        if (!existingTitles.has(e.title)) {
+          merged[key].push(e);
+        }
+      });
+      // 날짜순 정렬
+      merged[key].sort((a, b) => a.date - b.date);
+    });
+    return merged;
+  });
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [parsedEvents, setParsedEvents] = useState<AcademicEvent[]>([]);

@@ -14,6 +14,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
   ClipboardList,
   Calendar,
   CheckCircle2,
@@ -30,8 +37,14 @@ import {
   Clock,
   Sparkles,
   Target,
+  Info,
+  ListChecks,
+  Lightbulb,
+  ExternalLink,
+  Scale,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { monthlyTasksDatabase, type MonthlyTask } from '@/data/education-database';
 
 // 월별 업무 데이터 - 실제 초등교사 업무 기반
 const monthlyTasksData: Record<string, { title: string; tasks: TaskCategory[] }> = {
@@ -495,8 +508,31 @@ export default function MonthlyTasksPage() {
   const currentMonth = new Date().getMonth() + 1;
   const [selectedMonth, setSelectedMonth] = useState(String(currentMonth));
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const [selectedTask, setSelectedTask] = useState<MonthlyTask | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const monthData = monthlyTasksData[selectedMonth];
+
+  // 데이터베이스에서 선택된 월의 상세 업무 가져오기
+  const detailedTasks = useMemo(() => {
+    return monthlyTasksDatabase.filter(task => task.month === parseInt(selectedMonth));
+  }, [selectedMonth]);
+
+  // 업무명으로 상세 정보 찾기
+  const findDetailedTask = useCallback((taskName: string): MonthlyTask | undefined => {
+    return detailedTasks.find(t =>
+      taskName.includes(t.title) || t.title.includes(taskName) ||
+      t.checklist.some(c => taskName.includes(c))
+    );
+  }, [detailedTasks]);
+
+  const handleTaskClick = useCallback((taskName: string) => {
+    const detailed = findDetailedTask(taskName);
+    if (detailed) {
+      setSelectedTask(detailed);
+      setIsDetailOpen(true);
+    }
+  }, [findDetailedTask]);
 
   const toggleTask = useCallback((taskId: string) => {
     setCompletedTasks((prev) => {
@@ -609,28 +645,28 @@ export default function MonthlyTasksPage() {
                         <div
                           key={item.id}
                           className={cn(
-                            'flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer',
+                            'flex items-start gap-3 p-3 rounded-lg border transition-colors',
                             isCompleted
                               ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
                               : 'hover:bg-accent/50'
                           )}
-                          onClick={() => toggleTask(item.id)}
                         >
                           <Checkbox
                             checked={isCompleted}
                             onCheckedChange={() => toggleTask(item.id)}
-                            className="mt-0.5"
+                            className="mt-0.5 cursor-pointer"
                           />
                           <div className="flex-1 min-w-0">
                             <p
                               className={cn(
-                                'font-medium',
+                                'font-medium cursor-pointer',
                                 isCompleted && 'line-through text-muted-foreground'
                               )}
+                              onClick={() => toggleTask(item.id)}
                             >
                               {item.task}
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <Badge variant="outline" className={cn('text-xs', priority.color)}>
                                 {priority.label}
                               </Badge>
@@ -638,6 +674,20 @@ export default function MonthlyTasksPage() {
                                 <Clock className="h-3 w-3" />
                                 {item.deadline}
                               </span>
+                              {findDetailedTask(item.task) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTaskClick(item.task);
+                                  }}
+                                >
+                                  <Info className="h-3 w-3 mr-1" />
+                                  상세보기
+                                </Button>
+                              )}
                             </div>
                           </div>
                           {isCompleted ? (
@@ -681,6 +731,166 @@ export default function MonthlyTasksPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 업무 상세 정보 Sheet */}
+      <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          {selectedTask && (
+            <>
+              <SheetHeader className="pb-4 border-b">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      selectedTask.priority === 'high' && 'bg-red-100 text-red-700 border-red-200',
+                      selectedTask.priority === 'medium' && 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                      selectedTask.priority === 'low' && 'bg-green-100 text-green-700 border-green-200'
+                    )}
+                  >
+                    {selectedTask.priority === 'high' ? '높음' : selectedTask.priority === 'medium' ? '보통' : '낮음'}
+                  </Badge>
+                  <Badge variant="secondary">{selectedTask.category}</Badge>
+                </div>
+                <SheetTitle className="text-xl">{selectedTask.title}</SheetTitle>
+                <SheetDescription className="text-base">
+                  {selectedTask.description}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-6 py-6">
+                {/* 기본 정보 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">마감:</span>
+                    <span className="font-medium">{selectedTask.deadline}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">담당:</span>
+                    <span className="font-medium">{selectedTask.department}</span>
+                  </div>
+                </div>
+
+                {/* 체크리스트 */}
+                <div>
+                  <h4 className="flex items-center gap-2 font-semibold mb-3">
+                    <ListChecks className="h-5 w-5 text-blue-500" />
+                    업무 체크리스트
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedTask.checklist.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 p-3 bg-accent/50 rounded-lg"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            {idx + 1}
+                          </span>
+                        </div>
+                        <span className="text-sm">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 업무 TIP */}
+                {selectedTask.tips && selectedTask.tips.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-2 font-semibold mb-3">
+                      <Lightbulb className="h-5 w-5 text-yellow-500" />
+                      업무 TIP
+                    </h4>
+                    <div className="bg-yellow-50 dark:bg-yellow-950/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <ul className="space-y-2">
+                        {selectedTask.tips.map((tip, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-sm">
+                            <Star className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                            <span>{tip}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* NEIS 메뉴 경로 */}
+                {selectedTask.neisMenu && (
+                  <div>
+                    <h4 className="flex items-center gap-2 font-semibold mb-3">
+                      <ExternalLink className="h-5 w-5 text-green-500" />
+                      NEIS 메뉴 경로
+                    </h4>
+                    <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                      <code className="text-sm font-mono text-green-700 dark:text-green-300">
+                        {selectedTask.neisMenu}
+                      </code>
+                    </div>
+                  </div>
+                )}
+
+                {/* 법적 근거 */}
+                {selectedTask.legalBasis && (
+                  <div>
+                    <h4 className="flex items-center gap-2 font-semibold mb-3">
+                      <Scale className="h-5 w-5 text-purple-500" />
+                      법적 근거
+                    </h4>
+                    <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <p className="text-sm text-purple-700 dark:text-purple-300">
+                        {selectedTask.legalBasis}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 관련 문서 */}
+                {selectedTask.relatedDocs && selectedTask.relatedDocs.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-2 font-semibold mb-3">
+                      <FileText className="h-5 w-5 text-orange-500" />
+                      관련 문서
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTask.relatedDocs.map((doc, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className="bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800"
+                        >
+                          <FileText className="h-3 w-3 mr-1" />
+                          {doc}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 하단 버튼 */}
+              <div className="pt-4 border-t flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setIsDetailOpen(false)}
+                >
+                  닫기
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    setIsDetailOpen(false);
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  업무 시작하기
+                </Button>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

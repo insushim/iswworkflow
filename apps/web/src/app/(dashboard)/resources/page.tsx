@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,25 +31,17 @@ import {
   BookOpen,
   Presentation,
   Image as ImageIcon,
+  Video,
 } from 'lucide-react';
+import {
+  communityResourcesDatabase,
+  resourceSources,
+  resourceCategories,
+  searchResources,
+  type CommunityResource,
+} from '@/data/community-resources';
 
-interface Resource {
-  id: string;
-  title: string;
-  description: string;
-  source: string;
-  sourceUrl: string;
-  category: string;
-  type: 'document' | 'template' | 'presentation' | 'image' | 'guide';
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
-  downloadCount: number;
-  publishedAt: string;
-  author: string;
-  tags: string[];
-  isBookmarked: boolean;
-}
+type Resource = CommunityResource;
 
 const resourceTypeConfig: Record<string, { icon: typeof FileText; color: string }> = {
   document: { icon: FileText, color: 'text-blue-500' },
@@ -57,149 +49,14 @@ const resourceTypeConfig: Record<string, { icon: typeof FileText; color: string 
   presentation: { icon: Presentation, color: 'text-orange-500' },
   image: { icon: ImageIcon, color: 'text-purple-500' },
   guide: { icon: BookOpen, color: 'text-pink-500' },
+  video: { icon: Video, color: 'text-red-500' },
 };
 
-const sources = ['전체', '인디스쿨', '아이스크림', '에듀넷', '티처빌', '참쌤스쿨', '쌤동네'];
-const categories = ['전체', '학급 운영', '학부모', '교실 환경', '수업 자료', '생활지도', '행사', '안전교육'];
+const sources = resourceSources;
+const categories = resourceCategories;
 
-const communityResources: Resource[] = [
-  {
-    id: '1',
-    title: '3월 학급경영 꿀팁 모음 (경력 10년차 교사)',
-    description: '신학기 첫 주부터 3월 한 달간 학급경영에 필요한 모든 팁을 정리했습니다. 학급규칙 정하기, 모둠 구성, 역할 분담 등 상세 가이드.',
-    source: '인디스쿨',
-    sourceUrl: 'https://indischool.com',
-    category: '학급 운영',
-    type: 'guide',
-    viewCount: 1523,
-    likeCount: 245,
-    commentCount: 32,
-    downloadCount: 189,
-    publishedAt: '2시간 전',
-    author: '초롱쌤',
-    tags: ['신학기', '학급경영', '3월'],
-    isBookmarked: false,
-  },
-  {
-    id: '2',
-    title: '학부모 상담 체크리스트 & 기록양식 공유합니다',
-    description: '학부모 상담 시 활용할 수 있는 체크리스트와 상담 기록 양식입니다. 한글/워드 파일 모두 포함.',
-    source: '아이스크림',
-    sourceUrl: 'https://icescream.co.kr',
-    category: '학부모',
-    type: 'template',
-    viewCount: 892,
-    likeCount: 156,
-    commentCount: 18,
-    downloadCount: 234,
-    publishedAt: '5시간 전',
-    author: '햇살쌤',
-    tags: ['학부모상담', '양식', '상담기록'],
-    isBookmarked: true,
-  },
-  {
-    id: '3',
-    title: '신학기 교실 환경 구성 아이디어 50선',
-    description: '저비용 고효율! 학생들이 좋아하는 교실 환경 구성 아이디어를 모았습니다. 게시판 템플릿 파일 포함.',
-    source: '에듀넷',
-    sourceUrl: 'https://edunet.net',
-    category: '교실 환경',
-    type: 'image',
-    viewCount: 2341,
-    likeCount: 412,
-    commentCount: 67,
-    downloadCount: 567,
-    publishedAt: '어제',
-    author: '별빛쌤',
-    tags: ['교실환경', '게시판', '환경구성'],
-    isBookmarked: false,
-  },
-  {
-    id: '4',
-    title: '3월 주간학습안내 양식 무료 공유',
-    description: '깔끔하고 예쁜 주간학습안내 양식입니다. 한글/PDF 버전 모두 제공.',
-    source: '티처빌',
-    sourceUrl: 'https://teacherville.co.kr',
-    category: '학급 운영',
-    type: 'template',
-    viewCount: 756,
-    likeCount: 98,
-    commentCount: 12,
-    downloadCount: 345,
-    publishedAt: '2일 전',
-    author: '꿈나무쌤',
-    tags: ['주간학습', '가정통신문', '양식'],
-    isBookmarked: false,
-  },
-  {
-    id: '5',
-    title: '1학기 안전교육 월별 계획서 및 자료',
-    description: '7대 안전교육 영역별 월별 계획서와 수업 자료 PPT입니다. NEIS 입력용 양식도 포함.',
-    source: '참쌤스쿨',
-    sourceUrl: 'https://chamssaem.com',
-    category: '안전교육',
-    type: 'presentation',
-    viewCount: 1892,
-    likeCount: 321,
-    commentCount: 45,
-    downloadCount: 678,
-    publishedAt: '3일 전',
-    author: '안전쌤',
-    tags: ['안전교육', '7대안전', 'NEIS'],
-    isBookmarked: true,
-  },
-  {
-    id: '6',
-    title: '학급 규칙 제작 PPT 템플릿 (수정 가능)',
-    description: '학생들과 함께 학급 규칙을 정할 때 사용할 수 있는 PPT 템플릿입니다.',
-    source: '쌤동네',
-    sourceUrl: 'https://ssam.teacherville.co.kr',
-    category: '학급 운영',
-    type: 'presentation',
-    viewCount: 1234,
-    likeCount: 187,
-    commentCount: 23,
-    downloadCount: 456,
-    publishedAt: '4일 전',
-    author: '규칙쌤',
-    tags: ['학급규칙', 'PPT', '템플릿'],
-    isBookmarked: false,
-  },
-  {
-    id: '7',
-    title: '2024 개정 교육과정 요약 정리본',
-    description: '2024 개정 교육과정의 핵심 내용을 요약 정리했습니다. 과목별 변화 포인트 포함.',
-    source: '에듀넷',
-    sourceUrl: 'https://edunet.net',
-    category: '수업 자료',
-    type: 'document',
-    viewCount: 3456,
-    likeCount: 567,
-    commentCount: 89,
-    downloadCount: 1234,
-    publishedAt: '5일 전',
-    author: '교육쌤',
-    tags: ['교육과정', '2024개정', '요약'],
-    isBookmarked: false,
-  },
-  {
-    id: '8',
-    title: '학기초 학생 상담 질문지 & 개인면담 양식',
-    description: '학기초 학생 파악을 위한 상담 질문지와 개인면담 기록 양식입니다.',
-    source: '인디스쿨',
-    sourceUrl: 'https://indischool.com',
-    category: '생활지도',
-    type: 'template',
-    viewCount: 987,
-    likeCount: 145,
-    commentCount: 19,
-    downloadCount: 312,
-    publishedAt: '1주 전',
-    author: '마음쌤',
-    tags: ['학생상담', '면담', '양식'],
-    isBookmarked: false,
-  },
-];
+// 데이터베이스에서 자료 가져오기
+const communityResources: Resource[] = communityResourcesDatabase;
 
 export default function ResourcesPage() {
   const [searchQuery, setSearchQuery] = useState('');

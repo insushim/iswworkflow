@@ -1,8 +1,8 @@
 'use client';
 
-// 🔴 버전 10.0 - saveUserSettings 상세 로깅 추가
-const BUILD_VERSION = 'v10.0-DETAILED-LOG';
-console.log('🔴🔴🔴 [Settings] 버전 10.0 - 상세 로깅 🔴🔴🔴');
+// 🔴 버전 12.0 - 업무 매핑 확장 (졸업앨범, 방송부 등 사용자 정의 업무 가이드 연동)
+const BUILD_VERSION = 'v12.0-DUTY-MAPPING-EXTENDED';
+console.log('🔴🔴🔴 [Settings] 버전 12.0 - 업무 매핑 확장 🔴🔴🔴');
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

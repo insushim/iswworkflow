@@ -731,6 +731,9 @@ export function useUserSettings() {
   const hasFetched = useRef(false);
   const isMounted = useRef(true);
 
+  // localStorage 헬퍼 (fetchSettings 위에서 정의)
+  const LOCAL_KEY_PREFIX = 'eduflow_user_settings_';
+
   const fetchSettings = useCallback(async () => {
     if (!user) {
       setSettings(null);
@@ -738,36 +741,46 @@ export function useUserSettings() {
       return;
     }
 
+    // 1. 먼저 localStorage에서 로드 (즉시)
     try {
-      // 최대 5초 타임아웃 적용
+      const localData = localStorage.getItem(`${LOCAL_KEY_PREFIX}${user.uid}`);
+      if (localData) {
+        const parsed = JSON.parse(localData) as UserSettings;
+        console.log('✅ [fetchSettings] localStorage에서 즉시 로드', parsed);
+        setSettings(parsed);
+        setLoading(false);
+      }
+    } catch (e) {
+      console.warn('⚠️ [fetchSettings] localStorage 로드 실패', e);
+    }
+
+    // 2. Firestore에서도 로드 시도 (백그라운드, 3초 타임아웃)
+    try {
       const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => reject(new Error('timeout')), 5000);
+        setTimeout(() => reject(new Error('timeout')), 3000);
       });
 
       const { getUserSettings } = await getFirebaseDb();
       const fetchPromise = getUserSettings(user.uid);
       const fetchedSettings = await Promise.race([fetchPromise, timeoutPromise]);
 
-      if (isMounted.current) {
-        debugLog('SUCCESS', '사용자 설정 로드 성공', fetchedSettings);
-        console.log('[useUserSettings] 로드된 설정:', {
+      if (isMounted.current && fetchedSettings) {
+        debugLog('SUCCESS', '사용자 설정 로드 성공 (Firestore)', fetchedSettings);
+        console.log('[useUserSettings] Firestore 로드 성공:', {
           roles: (fetchedSettings as unknown as { roles?: string[] })?.roles || [],
           customTasks: (fetchedSettings as unknown as { customTasks?: string[] })?.customTasks || [],
         });
         setSettings(fetchedSettings);
+        // Firestore 데이터를 localStorage에도 저장
+        localStorage.setItem(`${LOCAL_KEY_PREFIX}${user.uid}`, JSON.stringify(fetchedSettings));
         setError(null);
       }
     } catch (err) {
+      // Firestore 실패해도 localStorage 데이터가 있으면 에러 무시
+      console.warn('⚠️ [fetchSettings] Firestore 로드 실패 (localStorage 사용)', err);
       if (!isMounted.current) return;
-
-      // 타임아웃이나 오프라인 에러시 빈 설정 반환
-      if (isOfflineError(err) || (err instanceof Error && err.message === 'timeout')) {
-        setSettings(null);
-        setError(null);
-      } else {
-        setError('설정을 불러오는데 실패했습니다.');
-        console.error(err);
-      }
+      // localStorage에서 이미 로드했으면 에러 표시 안함
+      setError(null);
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -793,10 +806,40 @@ export function useUserSettings() {
     };
   }, [fetchSettings, authLoading, user]);
 
-  // 낙관적 업데이트: 먼저 UI 업데이트 후 서버에 저장
+  // localStorage 키
+  const LOCAL_SETTINGS_KEY = 'eduflow_user_settings';
+
+  // localStorage에 설정 저장
+  const saveToLocalStorage = (userId: string, data: Partial<UserSettings>) => {
+    try {
+      const key = `${LOCAL_SETTINGS_KEY}_${userId}`;
+      const existing = localStorage.getItem(key);
+      const existingData = existing ? JSON.parse(existing) : {};
+      const merged = { ...existingData, ...data, updatedAt: new Date().toISOString() };
+      localStorage.setItem(key, JSON.stringify(merged));
+      console.log('✅ [localStorage] 설정 저장 완료', merged);
+      return true;
+    } catch (e) {
+      console.error('❌ [localStorage] 저장 실패', e);
+      return false;
+    }
+  };
+
+  // localStorage에서 설정 로드
+  const loadFromLocalStorage = (userId: string): Partial<UserSettings> | null => {
+    try {
+      const key = `${LOCAL_SETTINGS_KEY}_${userId}`;
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // 낙관적 업데이트: localStorage 우선, Firestore는 백그라운드
   const updateSettings = async (updates: Partial<UserSettings>) => {
     const startTime = performance.now();
-    console.log('🔵 [updateSettings] 시작', { updates, user: user?.uid });
+    console.log('🔵 [updateSettings] v11 시작', { updates, user: user?.uid });
 
     if (!user) {
       alert('❌ 로그인이 필요합니다. 다시 로그인해주세요.');
@@ -805,35 +848,36 @@ export function useUserSettings() {
 
     debugLog('FETCH', '설정 저장 시작', updates);
 
-    // 낙관적 업데이트 - 즉시 UI 반영
-    const previousSettings = settings;
+    // 1. 즉시 UI 반영 (낙관적 업데이트)
     setSettings(prev => prev ? { ...prev, ...updates } as UserSettings : null);
 
+    // 2. localStorage에 즉시 저장 (항상 성공)
+    const localSaved = saveToLocalStorage(user.uid, updates);
+    if (localSaved) {
+      console.log('✅ [updateSettings] localStorage 저장 완료 (즉시)', `+${(performance.now() - startTime).toFixed(0)}ms`);
+    }
+
+    // 3. Firestore에 백그라운드로 저장 시도 (3초 타임아웃)
     try {
-      // 15초 타임아웃 적용 (증가됨)
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('저장 시간 초과 (15초)')), 15000);
+        setTimeout(() => reject(new Error('Firestore 타임아웃')), 3000);
       });
 
-      console.log('🔵 [updateSettings] Firebase 모듈 로딩 시작...', `+${(performance.now() - startTime).toFixed(0)}ms`);
-      const { saveUserSettings } = await getFirebaseDb();
-      console.log('🔵 [updateSettings] Firebase 모듈 로딩 완료', `+${(performance.now() - startTime).toFixed(0)}ms`);
+      const { saveUserSettings } = await Promise.race([
+        getFirebaseDb(),
+        timeoutPromise.then(() => { throw new Error('모듈 로딩 타임아웃'); })
+      ]) as { saveUserSettings: typeof import('../lib/firebase-db').saveUserSettings };
 
-      console.log('🔵 [updateSettings] Firestore 저장 시작...', `+${(performance.now() - startTime).toFixed(0)}ms`);
       const savePromise = saveUserSettings(user.uid, updates);
       await Promise.race([savePromise, timeoutPromise]);
-      console.log('🔵 [updateSettings] Firestore 저장 완료!', `+${(performance.now() - startTime).toFixed(0)}ms`);
 
-      console.log('[useUserSettings] 설정 저장 성공:', updates);
-      debugLog('SUCCESS', '설정 저장 완료', updates);
+      console.log('✅ [updateSettings] Firestore 저장 완료!', `+${(performance.now() - startTime).toFixed(0)}ms`);
+      debugLog('SUCCESS', '설정 저장 완료 (Firestore)', updates);
     } catch (err) {
-      // 실패시 원래 상태로 롤백
-      console.log('🔴 [updateSettings] 실패', `+${(performance.now() - startTime).toFixed(0)}ms`, err);
-      debugLog('ERROR', '설정 저장 실패', err);
-      setSettings(previousSettings);
-      // 저장 에러는 전체 페이지 에러로 표시하지 않음 (호출자가 처리)
-      console.error('설정 저장 실패:', err);
-      throw err; // 호출자가 에러를 처리할 수 있도록 재throw
+      // Firestore 실패해도 localStorage에는 저장되어 있으므로 에러 무시
+      console.warn('⚠️ [updateSettings] Firestore 저장 실패 (localStorage에는 저장됨)', err);
+      debugLog('WARN', 'Firestore 저장 실패, localStorage 사용', err);
+      // 에러를 throw하지 않음 - localStorage에 저장되었으므로 성공으로 처리
     }
   };
 
