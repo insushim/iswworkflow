@@ -1,6 +1,6 @@
 'use client';
 
-console.log('🔵🔵🔵 [DutiesGuide] 페이지 로드됨 - 버전 2.0 🔵🔵🔵');
+console.log('🔵🔵🔵 [DutiesGuide] 페이지 로드됨 - 버전 3.0 - 카드에 상세 업무 표시 🔵🔵🔵');
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -509,6 +509,11 @@ export default function DutiesGuidePage() {
           const colorClass = colorMap[duty.color] || 'text-gray-500 bg-gray-50';
           const matched = isMatchedDuty(duty);
 
+          // 상세 업무 중 필수/중요 업무만 미리보기
+          const essentialTasks = duty.detailedTasks.filter(t => t.category === 'essential' || t.category === 'important').slice(0, 5);
+          const otherTasks = duty.detailedTasks.filter(t => t.category !== 'essential' && t.category !== 'important').slice(0, 3);
+          const previewTasks = essentialTasks.length > 0 ? essentialTasks : otherTasks;
+
           return (
             <Card
               key={duty.id}
@@ -520,7 +525,7 @@ export default function DutiesGuidePage() {
               )}
               onClick={() => openDutyDetail(duty)}
             >
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className={cn('p-2 rounded-lg', colorClass)}>
                     <IconComponent className="h-5 w-5" />
@@ -544,15 +549,46 @@ export default function DutiesGuidePage() {
                   {duty.description}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <div className="flex gap-2">
-                    <span>{duty.detailedTasks.length}개 상세업무</span>
-                    <span>•</span>
-                    <span>{duty.detailedFAQ.length}개 FAQ</span>
+              <CardContent className="pb-3 space-y-3">
+                {/* 상세 업무 미리보기 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground">📋 주요 업무 ({duty.detailedTasks.length}개)</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-primary">
-                    자세히 <ChevronRight className="h-4 w-4 ml-1" />
+                  <div className="space-y-1">
+                    {previewTasks.map((task, idx) => (
+                      <div key={task.id} className="flex items-start gap-2 text-xs">
+                        <span className={cn(
+                          "mt-0.5 flex-shrink-0",
+                          task.category === 'essential' ? 'text-red-500' :
+                          task.category === 'important' ? 'text-orange-500' :
+                          'text-blue-500'
+                        )}>●</span>
+                        <span className="text-muted-foreground line-clamp-1">{task.task}</span>
+                        {task.deadline && (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0 flex-shrink-0">
+                            {task.deadline}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                    {duty.detailedTasks.length > previewTasks.length && (
+                      <p className="text-xs text-muted-foreground/70 pl-4">
+                        +{duty.detailedTasks.length - previewTasks.length}개 더...
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 요약 정보 */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                  <div className="flex gap-2">
+                    <span>{duty.detailedFAQ.length}개 FAQ</span>
+                    <span>•</span>
+                    <span>{duty.emergencyProcedures.length > 0 ? `${duty.emergencyProcedures.length}개 긴급대응` : '나이스 가이드 포함'}</span>
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-primary h-6 px-2">
+                    자세히 <ChevronRight className="h-3 w-3 ml-1" />
                   </Button>
                 </div>
               </CardContent>

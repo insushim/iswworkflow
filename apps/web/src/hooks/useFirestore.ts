@@ -85,48 +85,9 @@ async function getFirebaseDb() {
   return firebaseDbModule;
 }
 
-// 로컬 기본 업무 데이터 (즉시 표시용)
-const DEFAULT_TASKS: Task[] = [
-  {
-    id: 'local_task_1',
-    userId: 'local',
-    title: '3월 학급경영록 작성',
-    description: '3월 학급경영 계획 및 실적 기록',
-    category: '학급경영',
-    priority: 'high',
-    status: 'in_progress',
-    progress: 30,
-    dueDate: null,
-    createdAt: null as unknown as Timestamp,
-    updatedAt: null as unknown as Timestamp,
-  },
-  {
-    id: 'local_task_2',
-    userId: 'local',
-    title: '학부모 상담 안내문 발송',
-    description: '1학기 학부모 상담 일정 안내',
-    category: '학부모',
-    priority: 'medium',
-    status: 'pending',
-    progress: 0,
-    dueDate: null,
-    createdAt: null as unknown as Timestamp,
-    updatedAt: null as unknown as Timestamp,
-  },
-  {
-    id: 'local_task_3',
-    userId: 'local',
-    title: '안전교육 실시',
-    description: '3월 안전교육 실시 및 기록',
-    category: '안전',
-    priority: 'high',
-    status: 'pending',
-    progress: 0,
-    dueDate: null,
-    createdAt: null as unknown as Timestamp,
-    updatedAt: null as unknown as Timestamp,
-  },
-];
+// 🔄 로딩 중 표시용 빈 배열 (로그인 후 실제 데이터로 교체됨)
+// 기본 데이터는 Firebase에서 로드되므로 빈 상태로 시작
+const DEFAULT_TASKS: Task[] = [];
 
 // Task Hook - 즉시 로딩 패턴 (기본 데이터 먼저 표시)
 export function useTasks() {
@@ -216,45 +177,8 @@ export function useTasks() {
   };
 }
 
-// 로컬 기본 문서 데이터 (즉시 표시용)
-const DEFAULT_DOCUMENTS: Document[] = [
-  {
-    id: 'local_doc_1',
-    userId: 'local',
-    title: '3월 가정통신문',
-    content: '학부모님 안녕하세요. 3월 학교 일정을 안내해 드립니다...',
-    type: '가정통신문',
-    status: 'DRAFT',
-    isStarred: true,
-    isGenerated: false,
-    createdAt: null as unknown as Timestamp,
-    updatedAt: null as unknown as Timestamp,
-  },
-  {
-    id: 'local_doc_2',
-    userId: 'local',
-    title: '현장체험학습 안내문',
-    content: '현장체험학습 안내입니다...',
-    type: '안내문',
-    status: 'REVIEW',
-    isStarred: false,
-    isGenerated: true,
-    createdAt: null as unknown as Timestamp,
-    updatedAt: null as unknown as Timestamp,
-  },
-  {
-    id: 'local_doc_3',
-    userId: 'local',
-    title: '학부모 상담 안내',
-    content: '1학기 학부모 상담 일정을 안내해 드립니다...',
-    type: '가정통신문',
-    status: 'APPROVED',
-    isStarred: false,
-    isGenerated: false,
-    createdAt: null as unknown as Timestamp,
-    updatedAt: null as unknown as Timestamp,
-  },
-];
+// 🔄 로딩 중 표시용 빈 배열 (로그인 후 실제 데이터로 교체됨)
+const DEFAULT_DOCUMENTS: Document[] = [];
 
 // Document Hook - 즉시 로딩 패턴 (기본 데이터 먼저 표시)
 export function useDocuments() {
@@ -344,48 +268,8 @@ export function useDocuments() {
   };
 }
 
-// 로컬 기본 일정 데이터 (즉시 표시용)
-const DEFAULT_EVENTS: CalendarEvent[] = [
-  {
-    id: 'local_event_1',
-    userId: 'local',
-    title: '학부모 상담 주간',
-    description: '1학기 학부모 상담 진행',
-    type: 'meeting',
-    startDate: null as unknown as Timestamp,
-    time: '14:00',
-    location: '각 학급 교실',
-    priority: 'high',
-    isCompleted: false,
-    createdAt: null as unknown as Timestamp,
-  },
-  {
-    id: 'local_event_2',
-    userId: 'local',
-    title: '안전교육 실시',
-    description: '3월 안전교육 실시',
-    type: 'event',
-    startDate: null as unknown as Timestamp,
-    time: '09:00',
-    location: '다목적실',
-    priority: 'medium',
-    isCompleted: false,
-    createdAt: null as unknown as Timestamp,
-  },
-  {
-    id: 'local_event_3',
-    userId: 'local',
-    title: '학급경영록 제출',
-    description: '3월 학급경영록 제출 마감',
-    type: 'deadline',
-    startDate: null as unknown as Timestamp,
-    time: '17:00',
-    location: '',
-    priority: 'high',
-    isCompleted: false,
-    createdAt: null as unknown as Timestamp,
-  },
-];
+// 🔄 로딩 중 표시용 빈 배열 (로그인 후 실제 데이터로 교체됨)
+const DEFAULT_EVENTS: CalendarEvent[] = [];
 
 // Calendar Events Hook - 즉시 로딩 패턴 (기본 데이터 먼저 표시)
 export function useCalendarEvents() {
@@ -539,112 +423,8 @@ export function timestampToDate(timestamp: Timestamp | null): Date | null {
 // 로컬 워크플로우용 타입 (createdAt 없이) - export하여 페이지에서 사용
 export type LocalWorkflow = Omit<Workflow, 'createdAt'> & { createdAt?: Timestamp };
 
-// 로컬 기본 워크플로우 데이터 (즉시 표시용)
-const DEFAULT_WORKFLOWS: LocalWorkflow[] = [
-    {
-      id: 'local_1',
-      title: '학급경영록 작성',
-      description: '월별 학급경영 계획 수립부터 실적 기록까지의 전체 과정',
-      category: '학급경영',
-      totalSteps: 8,
-      steps: [
-        { id: 'step1', title: '월별 목표 설정', description: '이번 달 학급경영 목표를 설정합니다', order: 1 },
-        { id: 'step2', title: '주간 계획 수립', description: '주별 세부 계획을 작성합니다', order: 2 },
-        { id: 'step3', title: '학급 활동 기록', description: '진행한 학급 활동을 기록합니다', order: 3 },
-        { id: 'step4', title: '학생 관찰 기록', description: '학생별 특이사항을 기록합니다', order: 4 },
-        { id: 'step5', title: '학부모 상담 기록', description: '학부모 상담 내용을 기록합니다', order: 5 },
-        { id: 'step6', title: '생활지도 기록', description: '생활지도 사항을 기록합니다', order: 6 },
-        { id: 'step7', title: '월말 평가', description: '월별 목표 달성 여부를 평가합니다', order: 7 },
-        { id: 'step8', title: '다음 달 계획', description: '다음 달 개선 사항을 반영합니다', order: 8 },
-      ],
-      estimatedTime: '30분',
-      difficulty: 'medium' as const,
-    },
-    {
-      id: 'local_2',
-      title: '학부모 상담 진행',
-      description: '상담 안내문 발송부터 상담 결과 기록까지',
-      category: '학부모',
-      totalSteps: 6,
-      steps: [
-        { id: 'step1', title: '상담 일정 조율', description: '학부모와 상담 일정을 조율합니다', order: 1 },
-        { id: 'step2', title: '안내문 발송', description: '상담 안내문을 발송합니다', order: 2 },
-        { id: 'step3', title: '상담 자료 준비', description: '학생 자료를 준비합니다', order: 3 },
-        { id: 'step4', title: '상담 진행', description: '학부모 상담을 진행합니다', order: 4 },
-        { id: 'step5', title: '상담 결과 기록', description: '상담 내용을 기록합니다', order: 5 },
-        { id: 'step6', title: '후속 조치', description: '필요한 후속 조치를 진행합니다', order: 6 },
-      ],
-      estimatedTime: '20분',
-      difficulty: 'easy' as const,
-    },
-    {
-      id: 'local_3',
-      title: '현장체험학습 준비',
-      description: '계획서 작성부터 안전교육, 사후 보고서까지',
-      category: '행사',
-      totalSteps: 7,
-      steps: [
-        { id: 'step1', title: '장소 선정 및 답사', description: '체험학습 장소를 선정하고 답사합니다', order: 1 },
-        { id: 'step2', title: '계획서 작성', description: '현장체험학습 계획서를 작성합니다', order: 2 },
-        { id: 'step3', title: '학부모 안내문 발송', description: '동의서를 포함한 안내문을 발송합니다', order: 3 },
-        { id: 'step4', title: '안전교육 실시', description: '사전 안전교육을 실시합니다', order: 4 },
-        { id: 'step5', title: '체험학습 진행', description: '현장체험학습을 진행합니다', order: 5 },
-        { id: 'step6', title: '결과 보고서 작성', description: '체험학습 결과 보고서를 작성합니다', order: 6 },
-        { id: 'step7', title: '정산 및 마무리', description: '비용 정산 및 마무리합니다', order: 7 },
-      ],
-      estimatedTime: '1시간',
-      difficulty: 'hard' as const,
-    },
-    {
-      id: 'local_4',
-      title: '안전교육 실시',
-      description: '7대 안전교육 영역별 교육 계획 및 실시',
-      category: '안전',
-      totalSteps: 5,
-      steps: [
-        { id: 'step1', title: '교육 계획 수립', description: '안전교육 계획을 수립합니다', order: 1 },
-        { id: 'step2', title: '교육 자료 준비', description: '교육 자료를 준비합니다', order: 2 },
-        { id: 'step3', title: '교육 실시', description: '안전교육을 실시합니다', order: 3 },
-        { id: 'step4', title: '교육 결과 입력', description: 'NEIS에 교육 결과를 입력합니다', order: 4 },
-        { id: 'step5', title: '실적 정리', description: '교육 실적을 정리합니다', order: 5 },
-      ],
-      estimatedTime: '15분',
-      difficulty: 'easy' as const,
-    },
-    {
-      id: 'local_5',
-      title: '평가 계획 수립',
-      description: '교과별 평가 계획 수립 및 성적 처리',
-      category: '평가',
-      totalSteps: 6,
-      steps: [
-        { id: 'step1', title: '성취기준 분석', description: '교과별 성취기준을 분석합니다', order: 1 },
-        { id: 'step2', title: '평가 계획 작성', description: '평가 계획을 작성합니다', order: 2 },
-        { id: 'step3', title: '평가 도구 개발', description: '평가 도구를 개발합니다', order: 3 },
-        { id: 'step4', title: '평가 실시', description: '평가를 실시합니다', order: 4 },
-        { id: 'step5', title: '채점 및 기록', description: '채점하고 기록합니다', order: 5 },
-        { id: 'step6', title: '결과 분석', description: '평가 결과를 분석합니다', order: 6 },
-      ],
-      estimatedTime: '45분',
-      difficulty: 'medium' as const,
-    },
-    {
-      id: 'local_6',
-      title: '공문서 작성',
-      description: '행정 공문 작성 및 발송 절차',
-      category: '문서작성',
-      totalSteps: 5,
-      steps: [
-        { id: 'step1', title: '문서 양식 선택', description: '적절한 문서 양식을 선택합니다', order: 1 },
-        { id: 'step2', title: '내용 작성', description: '문서 내용을 작성합니다', order: 2 },
-        { id: 'step3', title: '첨부파일 준비', description: '필요한 첨부파일을 준비합니다', order: 3 },
-        { id: 'step4', title: '결재 요청', description: '결재를 요청합니다', order: 4 },
-        { id: 'step5', title: '발송', description: '문서를 발송합니다', order: 5 },
-      ],
-      estimatedTime: '20분',
-      difficulty: 'easy' as const,
-    },
-];
+// 🔄 로딩 중 표시용 빈 배열 (Firebase에서 실제 데이터로 교체됨)
+const DEFAULT_WORKFLOWS: LocalWorkflow[] = [];
 
 // Workflow Hook - 즉시 로딩 패턴 (기본 데이터 먼저 표시)
 export function useWorkflows() {
