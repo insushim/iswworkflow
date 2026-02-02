@@ -170,7 +170,7 @@ export default function SchoolRecordPage() {
   const [generatedText, setGeneratedText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [savedPhrases, setSavedPhrases] = useState<string[]>([]);
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // 카테고리 매핑
@@ -192,7 +192,7 @@ export default function SchoolRecordPage() {
   const filteredPhrases = useMemo(() => {
     const dbCategory = categoryMap[selectedCategory] || 'behavior';
     const gradeNum = grade ? parseInt(grade) : null;
-    let phrases = getFilteredPhrases(dbCategory, gradeNum, selectedSubcategory || undefined);
+    let phrases = getFilteredPhrases(dbCategory, gradeNum, selectedSubcategory === 'all' ? undefined : selectedSubcategory);
 
     // 검색어 필터링
     if (searchQuery) {
@@ -460,7 +460,7 @@ export default function SchoolRecordPage() {
                     <SelectValue placeholder="세부 항목 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">전체</SelectItem>
+                    <SelectItem value="all">전체</SelectItem>
                     {subcategories.map((sub) => (
                       <SelectItem key={sub} value={sub}>
                         {sub}

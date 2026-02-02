@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,25 +37,112 @@ import {
   Star,
   StarOff,
   Loader2,
-  AlertCircle,
   FileEdit,
+  Copy,
 } from 'lucide-react';
-import { useDocuments, useUserSettings } from '@/hooks/useFirestore';
-import { Document } from '@/lib/firebase-db';
-import { Timestamp } from 'firebase/firestore';
-import { DocumentGenerator } from '@/components/document-generator';
-import { documentCategories, popularTemplates } from '@/lib/document-templates';
-import { dutyToDocumentTypeMapping, getMatchingCategories } from '@/data/departments';
+import { toast } from 'sonner';
+
+// 문서 타입 정의
+interface Document {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  status: 'DRAFT' | 'REVIEW' | 'APPROVED';
+  isStarred: boolean;
+  isGenerated: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 const documentTypes = ['전체', '가정통신문', '계획서', '보고서', '안내문', '공문', '동의서', '신청서', '회의록', '기타'];
 
+// 샘플 문서 템플릿
+const documentTemplates = [
+  {
+    id: 'tpl-1',
+    title: '학부모 상담 안내문',
+    type: '가정통신문',
+    content: `학부모님께
+
+안녕하십니까? 학부모님의 가정에 건강과 행복이 가득하시길 기원합니다.
+
+본교에서는 학생들의 학교생활과 가정생활에 대한 상담을 실시하고자 합니다.
+바쁘시더라도 참석하시어 자녀의 학교생활에 대해 이야기 나누는 시간이 되시길 바랍니다.
+
+- 상담 일시: 2026년 O월 O일(O) ~ O월 O일(O)
+- 상담 시간: 14:00 ~ 18:00
+- 상담 장소: 각 학급 교실
+- 상담 내용: 학교생활, 학습, 교우관계 등
+
+참석 여부를 O월 O일까지 회신해 주시기 바랍니다.
+
+감사합니다.
+
+OO초등학교장`,
+  },
+  {
+    id: 'tpl-2',
+    title: '현장체험학습 동의서',
+    type: '동의서',
+    content: `현장체험학습 참가 동의서
+
+학생 정보
+- 학년/반: O학년 O반
+- 이름:
+- 생년월일:
+
+체험학습 정보
+- 일시: 2026년 O월 O일(O)
+- 장소:
+- 목적:
+
+위 학생이 현장체험학습에 참가하는 것을 동의합니다.
+또한, 안전사고 예방을 위해 인솔 교사의 지도에 따르도록 하겠습니다.
+
+2026년  월  일
+
+보호자:          (인)
+연락처:`,
+  },
+  {
+    id: 'tpl-3',
+    title: '학급 경영 계획서',
+    type: '계획서',
+    content: `2026학년도 학급 경영 계획서
+
+1. 학급 현황
+- 학년/반: O학년 O반
+- 학생 수: 남 O명, 여 O명, 계 O명
+- 담임교사:
+
+2. 학급 운영 목표
+-
+
+3. 학급 운영 방침
+가. 기본 생활 습관 지도
+나. 자기 주도적 학습 능력 신장
+다. 배려와 존중의 학급 문화 조성
+
+4. 월별 학급 행사 계획
+- 3월: 학급 규칙 정하기, 1인 1역 정하기
+- 4월:
+- 5월:
+...
+
+5. 학부모 협력 계획
+- 정기 상담: 1학기(4월), 2학기(9월)
+- 학급 운영 안내: 주간 학습 안내, 학급 홈페이지
+
+작성일: 2026년 월 일
+작성자:`,
+  },
+];
+
 export default function DocumentsPage() {
-  const { documents, loading, error, addDocument, editDocument, removeDocument } = useDocuments();
-  const { settings } = useUserSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('전체');
   const [showGenerator, setShowGenerator] = useState(false);
-  const [showTemplateGenerator, setShowTemplateGenerator] = useState(false);
   const [generatePrompt, setGeneratePrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -65,74 +152,65 @@ export default function DocumentsPage() {
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 사용자 설정에서 업무 정보 가져오기
-  const extSettings = settings as unknown as { roles?: string[]; customTasks?: string[] };
-  const userRoles = extSettings?.roles || [];
-  const userCustomTasks = extSettings?.customTasks || [];
-  const allUserDuties = [...userRoles, ...userCustomTasks];
+  // 로컬 스토리지에서 문서 로드
+  const [documents, setDocuments] = useState<Document[]>([]);
 
-  // 디버깅용 로그
-  console.log('[Documents] 설정 로드:', { settings, userRoles, userCustomTasks, allUserDuties });
+  useEffect(() => {
+    const saved = localStorage.getItem('eduflow_documents');
+    if (saved) {
+      setDocuments(JSON.parse(saved));
+    }
+  }, []);
 
-  // 사용자 업무에 맞는 문서 유형 찾기
-  const matchedDocTypes = useMemo(() => {
-    const result = getMatchingCategories(allUserDuties, dutyToDocumentTypeMapping);
-    console.log('[Documents] 매칭된 문서 유형:', result);
-    return result;
-  }, [allUserDuties]);
-
-  // 문서가 사용자 설정과 매칭되는지 확인
-  const isMatchedDocument = (doc: Document) => {
-    return matchedDocTypes.includes(doc.type);
+  // 문서 저장
+  const saveDocuments = (docs: Document[]) => {
+    setDocuments(docs);
+    localStorage.setItem('eduflow_documents', JSON.stringify(docs));
   };
 
-  // New document form state
-  const [newDocument, setNewDocument] = useState({
+  // 새 문서 폼 상태
+  const [newDocument, setNewDocument] = useState<{
+    title: string;
+    content: string;
+    type: string;
+    status: 'DRAFT' | 'REVIEW' | 'APPROVED';
+    isStarred: boolean;
+    isGenerated: boolean;
+  }>({
     title: '',
     content: '',
     type: '가정통신문',
-    status: 'DRAFT' as 'DRAFT' | 'REVIEW' | 'APPROVED',
+    status: 'DRAFT',
     isStarred: false,
     isGenerated: false,
   });
 
-  // 공문서 템플릿 생성 처리
-  const handleTemplateGenerate = async (title: string, content: string, type: string) => {
-    const docType = documentTypes.includes(type) ? type : '공문';
-    await addDocument({
-      title,
-      content,
-      type: docType,
-      status: 'DRAFT',
-      isStarred: false,
-      isGenerated: true,
-    });
-  };
-
-  // 필터링 및 정렬 (사용자 업무 우선)
+  // 필터링
   const filteredDocuments = useMemo(() => {
-    let result = documents.filter((doc) => {
+    return documents.filter((doc) => {
       const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = selectedType === '전체' || doc.type === selectedType;
       return matchesSearch && matchesType;
     });
-
-    // 사용자 업무가 있으면 매칭되는 문서 유형 우선 정렬
-    if (allUserDuties.length > 0) {
-      result = [...result].sort((a, b) => {
-        const aMatched = isMatchedDocument(a);
-        const bMatched = isMatchedDocument(b);
-        if (aMatched && !bMatched) return -1;
-        if (!aMatched && bMatched) return 1;
-        return 0;
-      });
-    }
-
-    return result;
-  }, [documents, searchQuery, selectedType, allUserDuties, matchedDocTypes]);
+  }, [documents, searchQuery, selectedType]);
 
   const starredDocuments = documents.filter((doc) => doc.isStarred);
 
+  // 템플릿 사용
+  const useTemplate = (template: typeof documentTemplates[0]) => {
+    setNewDocument({
+      title: template.title,
+      content: template.content,
+      type: template.type,
+      status: 'DRAFT',
+      isStarred: false,
+      isGenerated: false,
+    });
+    setIsAddDialogOpen(true);
+    toast.success('템플릿이 적용되었습니다. 내용을 수정해주세요.');
+  };
+
+  // AI 생성
   const handleGenerate = async () => {
     if (!generatePrompt.trim()) return;
     setIsGenerating(true);
@@ -145,7 +223,7 @@ export default function DocumentsPage() {
           messages: [
             {
               role: 'user',
-              content: `다음 요청에 맞는 문서를 작성해주세요. 문서 형식에 맞게 깔끔하게 작성해주세요:\n\n${generatePrompt}`,
+              content: `다음 요청에 맞는 초등학교 공문서를 작성해주세요. 실제 사용할 수 있는 형식으로 작성해주세요:\n\n${generatePrompt}`,
             },
           ],
         }),
@@ -157,77 +235,87 @@ export default function DocumentsPage() {
         throw new Error(data.error);
       }
 
-      // Create a new document with the generated content
-      await addDocument({
-        title: generatePrompt.slice(0, 50) + (generatePrompt.length > 50 ? '...' : ''),
-        content: data.message.content,
+      const newDoc: Document = {
+        id: `doc-${Date.now()}`,
+        title: generatePrompt.slice(0, 30) + (generatePrompt.length > 30 ? '...' : ''),
+        content: data.message?.content || '생성된 내용이 없습니다.',
         type: '가정통신문',
         status: 'DRAFT',
         isStarred: false,
         isGenerated: true,
-      });
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
+      saveDocuments([newDoc, ...documents]);
       setGeneratePrompt('');
       setShowGenerator(false);
+      toast.success('문서가 생성되었습니다!');
     } catch (err) {
       console.error('문서 생성 실패:', err);
+      toast.error('문서 생성에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // 문서 추가
   const handleAddDocument = async () => {
     if (!newDocument.title.trim()) return;
 
     setIsSubmitting(true);
-    try {
-      await addDocument(newDocument);
-      setNewDocument({
-        title: '',
-        content: '',
-        type: '가정통신문',
-        status: 'DRAFT',
-        isStarred: false,
-        isGenerated: false,
-      });
-      setIsAddDialogOpen(false);
-    } catch (err) {
-      console.error('문서 추가 실패:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
+    const newDoc: Document = {
+      id: `doc-${Date.now()}`,
+      ...newDocument,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveDocuments([newDoc, ...documents]);
+    setNewDocument({
+      title: '',
+      content: '',
+      type: '가정통신문',
+      status: 'DRAFT',
+      isStarred: false,
+      isGenerated: false,
+    });
+    setIsAddDialogOpen(false);
+    setIsSubmitting(false);
+    toast.success('문서가 저장되었습니다!');
   };
 
+  // 문서 수정
   const handleEditDocument = async () => {
-    if (!editingDocument || !editingDocument.id) return;
+    if (!editingDocument) return;
 
     setIsSubmitting(true);
-    try {
-      await editDocument(editingDocument.id, {
-        title: editingDocument.title,
-        content: editingDocument.content,
-        type: editingDocument.type,
-        status: editingDocument.status,
-        isStarred: editingDocument.isStarred,
-      });
-      setIsEditDialogOpen(false);
-      setEditingDocument(null);
-    } catch (err) {
-      console.error('문서 수정 실패:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
+    const updatedDocs = documents.map((doc) =>
+      doc.id === editingDocument.id
+        ? { ...editingDocument, updatedAt: new Date().toISOString() }
+        : doc
+    );
+    saveDocuments(updatedDocs);
+    setIsEditDialogOpen(false);
+    setEditingDocument(null);
+    setIsSubmitting(false);
+    toast.success('문서가 수정되었습니다!');
   };
 
+  // 문서 삭제
   const handleDeleteDocument = async (docId: string) => {
     if (confirm('정말로 이 문서를 삭제하시겠습니까?')) {
-      await removeDocument(docId);
+      saveDocuments(documents.filter((doc) => doc.id !== docId));
+      toast.success('문서가 삭제되었습니다.');
     }
   };
 
+  // 즐겨찾기 토글
   const toggleStarred = async (doc: Document) => {
-    if (!doc.id) return;
-    await editDocument(doc.id, { isStarred: !doc.isStarred });
+    const updatedDocs = documents.map((d) =>
+      d.id === doc.id ? { ...d, isStarred: !d.isStarred } : d
+    );
+    saveDocuments(updatedDocs);
   };
 
   const openEditDialog = (doc: Document) => {
@@ -240,48 +328,30 @@ export default function DocumentsPage() {
     setIsViewDialogOpen(true);
   };
 
-  const formatDate = (timestamp: Timestamp | undefined): string => {
-    if (!timestamp) return '-';
-    return timestamp.toDate().toLocaleDateString('ko-KR');
+  // 문서 복사
+  const copyToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast.success('클립보드에 복사되었습니다!');
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">문서를 불러오는 중...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-lg font-medium">{error}</p>
-        <p className="text-muted-foreground">로그인이 필요하거나 네트워크 문제가 있을 수 있습니다.</p>
-      </div>
-    );
-  }
+  const formatDate = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('ko-KR');
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">문서 관리</h1>
+          <h1 className="text-2xl font-bold">문서 작성</h1>
           <p className="text-muted-foreground">
-            공문서 양식으로 즉시 작성하거나 AI로 생성하세요
+            공문서 템플릿을 사용하거나 AI로 생성하세요
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             새 문서
-          </Button>
-          <Button variant="default" onClick={() => setShowTemplateGenerator(true)}>
-            <FileEdit className="h-4 w-4 mr-2" />
-            공문서 작성
           </Button>
           <Button variant="secondary" onClick={() => setShowGenerator(true)}>
             <Sparkles className="h-4 w-4 mr-2" />
@@ -290,12 +360,40 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* 공문서 템플릿 생성기 */}
-      <DocumentGenerator
-        isOpen={showTemplateGenerator}
-        onClose={() => setShowTemplateGenerator(false)}
-        onGenerate={handleTemplateGenerate}
-      />
+      {/* 템플릿 섹션 */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileEdit className="h-4 w-4 text-primary" />
+            문서 템플릿
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {documentTemplates.map((template) => (
+              <Card
+                key={template.id}
+                className="cursor-pointer hover:border-primary transition-colors"
+                onClick={() => useTemplate(template)}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm">{template.title}</h3>
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {template.type}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* AI Document Generator Modal */}
       {showGenerator && (
@@ -308,26 +406,7 @@ export default function DocumentsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">인기 템플릿 선택</label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {popularTemplates.slice(0, 6).map((template) => (
-                  <Button
-                    key={template.id}
-                    variant="outline"
-                    className="h-auto py-3 px-4 justify-start text-left"
-                    onClick={() => setGeneratePrompt(`${template.title} 작성해줘`)}
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{template.title}</p>
-                      <p className="text-xs text-muted-foreground">{template.category}</p>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">또는 직접 요청하기</label>
+              <Label className="text-sm font-medium mb-2 block">어떤 문서가 필요하신가요?</Label>
               <Textarea
                 placeholder="예: 3월 15일 학부모 상담 안내문을 작성해줘. 상담 시간은 14시~18시이고..."
                 value={generatePrompt}
@@ -385,38 +464,6 @@ export default function DocumentsPage() {
         </Card>
       )}
 
-      {/* 나의 업무 문서 유형 안내 카드 */}
-      {matchedDocTypes.length > 0 && (
-        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
-          <CardContent className="pt-4">
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-primary mb-1">추천 문서 유형</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  설정에서 선택한 업무와 관련된 문서 유형이 우선 표시됩니다.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {matchedDocTypes.map((type) => (
-                    <Badge
-                      key={type}
-                      variant="secondary"
-                      className="bg-primary/20 text-primary border-primary/30 cursor-pointer hover:bg-primary/30"
-                      onClick={() => setSelectedType(type)}
-                    >
-                      <Star className="h-3 w-3 mr-1 fill-primary" />
-                      {type}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
@@ -437,11 +484,8 @@ export default function DocumentsPage() {
                   variant={selectedType === type ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedType(type)}
-                  className={`whitespace-nowrap ${matchedDocTypes.includes(type) && type !== '전체' ? 'ring-1 ring-primary/50' : ''}`}
+                  className="whitespace-nowrap"
                 >
-                  {matchedDocTypes.includes(type) && type !== '전체' && (
-                    <Star className="h-3 w-3 mr-1 fill-primary text-primary" />
-                  )}
                   {type}
                 </Button>
               ))}
@@ -452,22 +496,14 @@ export default function DocumentsPage() {
 
       {/* Documents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredDocuments.map((doc) => {
-          const matched = isMatchedDocument(doc);
-          return (
-          <Card key={doc.id} className={`hover:shadow-md transition-shadow ${matched ? 'border-primary/30 ring-1 ring-primary/20' : ''}`}>
+        {filteredDocuments.map((doc) => (
+          <Card key={doc.id} className="hover:shadow-md transition-shadow">
             <CardContent className="pt-4">
               <div className="flex items-start justify-between mb-3">
-                <div className={`p-2 rounded-lg ${matched ? 'bg-primary/20' : 'bg-primary/10'}`}>
-                  <FileText className={`h-6 w-6 ${matched ? 'text-primary' : 'text-primary'}`} />
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <FileText className="h-6 w-6 text-primary" />
                 </div>
                 <div className="flex items-center gap-1">
-                  {matched && (
-                    <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
-                      <Star className="h-3 w-3 mr-1 fill-primary" />
-                      추천
-                    </Badge>
-                  )}
                   {doc.isGenerated && (
                     <Badge variant="secondary" className="text-xs">
                       <Sparkles className="h-3 w-3 mr-1" />
@@ -495,8 +531,17 @@ export default function DocumentsPage() {
                   {doc.type}
                 </Badge>
                 <span>•</span>
-                <Badge variant={doc.status === 'APPROVED' ? 'success' : doc.status === 'REVIEW' ? 'warning' : 'outline'} className="text-xs">
-                  {doc.status === 'APPROVED' ? '승인됨' : doc.status === 'REVIEW' ? '검토중' : '초안'}
+                <Badge
+                  variant={
+                    doc.status === 'APPROVED'
+                      ? 'default'
+                      : doc.status === 'REVIEW'
+                      ? 'secondary'
+                      : 'outline'
+                  }
+                  className="text-xs"
+                >
+                  {doc.status === 'APPROVED' ? '완료' : doc.status === 'REVIEW' ? '검토중' : '초안'}
                 </Badge>
               </div>
 
@@ -528,15 +573,14 @@ export default function DocumentsPage() {
                   variant="outline"
                   size="sm"
                   className="text-destructive hover:text-destructive"
-                  onClick={() => doc.id && handleDeleteDocument(doc.id)}
+                  onClick={() => handleDeleteDocument(doc.id)}
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
             </CardContent>
           </Card>
-          );
-        })}
+        ))}
 
         {/* New Document Card */}
         <Card
@@ -567,7 +611,13 @@ export default function DocumentsPage() {
           <CardContent className="py-12 text-center">
             <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
             <p className="text-muted-foreground mb-2">등록된 문서가 없습니다.</p>
-            <p className="text-sm text-muted-foreground">새 문서를 만들거나 AI로 문서를 생성해보세요!</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              위의 템플릿을 사용하거나 새 문서를 만들어보세요!
+            </p>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              새 문서 만들기
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -577,9 +627,7 @@ export default function DocumentsPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>새 문서 만들기</DialogTitle>
-            <DialogDescription>
-              새로운 문서를 작성합니다.
-            </DialogDescription>
+            <DialogDescription>새로운 문서를 작성합니다.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -602,9 +650,13 @@ export default function DocumentsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {documentTypes.filter(t => t !== '전체').map((type) => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
+                    {documentTypes
+                      .filter((t) => t !== '전체')
+                      .map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -612,7 +664,9 @@ export default function DocumentsPage() {
                 <Label>상태</Label>
                 <Select
                   value={newDocument.status}
-                  onValueChange={(value: 'DRAFT' | 'REVIEW' | 'APPROVED') => setNewDocument({ ...newDocument, status: value })}
+                  onValueChange={(value: 'DRAFT' | 'REVIEW' | 'APPROVED') =>
+                    setNewDocument({ ...newDocument, status: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -620,7 +674,7 @@ export default function DocumentsPage() {
                   <SelectContent>
                     <SelectItem value="DRAFT">초안</SelectItem>
                     <SelectItem value="REVIEW">검토중</SelectItem>
-                    <SelectItem value="APPROVED">승인됨</SelectItem>
+                    <SelectItem value="APPROVED">완료</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -659,9 +713,7 @@ export default function DocumentsPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>문서 수정</DialogTitle>
-            <DialogDescription>
-              문서 정보를 수정합니다.
-            </DialogDescription>
+            <DialogDescription>문서 정보를 수정합니다.</DialogDescription>
           </DialogHeader>
           {editingDocument && (
             <div className="grid gap-4 py-4">
@@ -670,7 +722,9 @@ export default function DocumentsPage() {
                 <Input
                   id="edit-title"
                   value={editingDocument.title}
-                  onChange={(e) => setEditingDocument({ ...editingDocument, title: e.target.value })}
+                  onChange={(e) =>
+                    setEditingDocument({ ...editingDocument, title: e.target.value })
+                  }
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -678,15 +732,21 @@ export default function DocumentsPage() {
                   <Label>유형</Label>
                   <Select
                     value={editingDocument.type}
-                    onValueChange={(value) => setEditingDocument({ ...editingDocument, type: value })}
+                    onValueChange={(value) =>
+                      setEditingDocument({ ...editingDocument, type: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {documentTypes.filter(t => t !== '전체').map((type) => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
+                      {documentTypes
+                        .filter((t) => t !== '전체')
+                        .map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -694,7 +754,9 @@ export default function DocumentsPage() {
                   <Label>상태</Label>
                   <Select
                     value={editingDocument.status}
-                    onValueChange={(value: 'DRAFT' | 'REVIEW' | 'APPROVED') => setEditingDocument({ ...editingDocument, status: value })}
+                    onValueChange={(value: 'DRAFT' | 'REVIEW' | 'APPROVED') =>
+                      setEditingDocument({ ...editingDocument, status: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -702,7 +764,7 @@ export default function DocumentsPage() {
                     <SelectContent>
                       <SelectItem value="DRAFT">초안</SelectItem>
                       <SelectItem value="REVIEW">검토중</SelectItem>
-                      <SelectItem value="APPROVED">승인됨</SelectItem>
+                      <SelectItem value="APPROVED">완료</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -712,7 +774,9 @@ export default function DocumentsPage() {
                 <Textarea
                   id="edit-content"
                   value={editingDocument.content || ''}
-                  onChange={(e) => setEditingDocument({ ...editingDocument, content: e.target.value })}
+                  onChange={(e) =>
+                    setEditingDocument({ ...editingDocument, content: e.target.value })
+                  }
                   className="min-h-[200px]"
                 />
               </div>
@@ -748,8 +812,20 @@ export default function DocumentsPage() {
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant="outline">{viewingDocument?.type}</Badge>
                 <span>•</span>
-                <Badge variant={viewingDocument?.status === 'APPROVED' ? 'success' : viewingDocument?.status === 'REVIEW' ? 'warning' : 'outline'}>
-                  {viewingDocument?.status === 'APPROVED' ? '승인됨' : viewingDocument?.status === 'REVIEW' ? '검토중' : '초안'}
+                <Badge
+                  variant={
+                    viewingDocument?.status === 'APPROVED'
+                      ? 'default'
+                      : viewingDocument?.status === 'REVIEW'
+                      ? 'secondary'
+                      : 'outline'
+                  }
+                >
+                  {viewingDocument?.status === 'APPROVED'
+                    ? '완료'
+                    : viewingDocument?.status === 'REVIEW'
+                    ? '검토중'
+                    : '초안'}
                 </Badge>
                 {viewingDocument?.isGenerated && (
                   <Badge variant="secondary">
@@ -761,11 +837,18 @@ export default function DocumentsPage() {
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[50vh] mt-4">
-            <div className="whitespace-pre-wrap text-sm">
+            <div className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-lg">
               {viewingDocument?.content || '내용이 없습니다.'}
             </div>
           </ScrollArea>
           <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => viewingDocument && copyToClipboard(viewingDocument.content)}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              복사
+            </Button>
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               닫기
             </Button>

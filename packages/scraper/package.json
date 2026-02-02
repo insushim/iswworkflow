@@ -23,11 +23,12 @@
     "@eduflow/database": "workspace:*",
     "axios": "^1.6.2",
     "cheerio": "^1.0.0-rc.12",
-    "puppeteer": "^21.6.0",
     "p-queue": "^8.0.1",
+    "puppeteer": "^21.6.0",
     "robots-parser": "^3.0.1"
   },
   "devDependencies": {
+    "@types/cheerio": "^1.0.0",
     "@types/node": "^20.10.0",
     "rimraf": "^5.0.5",
     "tsup": "^8.0.1",
