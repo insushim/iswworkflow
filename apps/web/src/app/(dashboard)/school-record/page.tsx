@@ -106,7 +106,7 @@ const getSubcategories = (category: string): string[] => {
   return Array.from(subcategories);
 };
 
-// AI 문구 생성 함수 - 데이터베이스 기반
+// AI 문구 생성 함수 - Gemini AI API 연동
 const generatePhrase = async (
   category: string,
   grade: string,
@@ -114,7 +114,15 @@ const generatePhrase = async (
   strength: string,
   keywords: string
 ): Promise<string> => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  // 카테고리명 매핑
+  const categoryNameMap: Record<string, string> = {
+    behavior: '행동특성 및 종합의견',
+    learning: '교과학습발달상황',
+    creative: '창의적 체험활동',
+    reading: '독서활동상황',
+    career: '진로활동',
+    special: '특기사항',
+  };
 
   // 카테고리 매핑 (UI 카테고리 -> DB 카테고리)
   const categoryMap: Record<string, string> = {
@@ -128,37 +136,100 @@ const generatePhrase = async (
 
   const dbCategory = categoryMap[category] || 'behavior';
   const gradeNum = parseInt(grade) || null;
+  const categoryName = categoryNameMap[category] || '행동특성 및 종합의견';
 
-  // 데이터베이스에서 해당 카테고리/학년 문구 가져오기
-  const matchingPhrases = getFilteredPhrases(dbCategory, gradeNum);
+  // 한글 라벨 가져오기
+  const personalityLabel = personalityTypes.find((p) => p.value === personality)?.label || '';
+  const strengthLabel = strengthAreas.find((s) => s.value === strength)?.label || '';
+  const gradeLabel = gradeOptions.find((g) => g.value === grade)?.label || '';
 
-  if (matchingPhrases.length > 0) {
-    // 키워드 매칭 시도
-    let bestMatches = matchingPhrases;
-    if (keywords) {
-      const keywordList = keywords.split(/[,\s]+/).filter(Boolean);
-      bestMatches = matchingPhrases.filter((p) =>
-        keywordList.some((kw) => p.keywords.some((pk) => pk.includes(kw) || kw.includes(pk)))
-      );
-      if (bestMatches.length === 0) bestMatches = matchingPhrases;
+  try {
+    // 1. 데이터베이스에서 예시 문구 3개 가져오기 (참고용)
+    const matchingPhrases = getFilteredPhrases(dbCategory, gradeNum);
+    const examplePhrases = matchingPhrases
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map((p) => p.content);
+
+    // 2. AI API 호출을 위한 프롬프트 구성
+    const prompt = `생활기록부 ${categoryName} 항목을 작성해주세요.
+
+학년: ${gradeLabel}
+학생 성격: ${personalityLabel}
+강점 과목: ${strengthLabel}
+키워드: ${keywords || '없음'}
+
+${examplePhrases.length > 0 ? `다음은 참고 예시입니다:
+${examplePhrases.map((phrase, idx) => `${idx + 1}. ${phrase}`).join('\n')}` : ''}
+
+위 정보를 바탕으로 생활기록부 문구를 200자 내외로 1개만 작성해주세요.
+- 문체: '~함', '~하였음' 체로 작성하세요.
+- 구체적이고 관찰 가능한 행동 중심으로 작성하세요.
+- 학생의 성장과 발전 가능성을 포함하세요.
+- 문구만 출력하고 다른 설명은 하지 마세요.`;
+
+    // 3. /api/chat에 POST 요청
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API 호출 실패: ${response.status}`);
     }
 
-    // 랜덤 선택
-    const randomPhrase = bestMatches[Math.floor(Math.random() * bestMatches.length)];
-    return randomPhrase.content;
+    const data = await response.json();
+
+    // 4. API 응답에서 content 추출
+    if (data.message && data.message.content) {
+      return data.message.content.trim();
+    }
+
+    throw new Error('API 응답 형식 오류');
+  } catch (error) {
+    console.error('AI API 호출 실패, fallback 사용:', error);
+
+    // 5. API 실패 시 기존 DB 기반 로직으로 fallback
+    const matchingPhrases = getFilteredPhrases(dbCategory, gradeNum);
+
+    if (matchingPhrases.length > 0) {
+      // 키워드 매칭 시도
+      let bestMatches = matchingPhrases;
+      if (keywords) {
+        const keywordList = keywords.split(/[,\s]+/).filter(Boolean);
+        bestMatches = matchingPhrases.filter((p) =>
+          keywordList.some((kw) => p.keywords.some((pk) => pk.includes(kw) || kw.includes(pk)))
+        );
+        if (bestMatches.length === 0) bestMatches = matchingPhrases;
+      }
+
+      // 랜덤 선택
+      const randomPhrase = bestMatches[Math.floor(Math.random() * bestMatches.length)];
+      return randomPhrase.content;
+    }
+
+    // 데이터베이스에도 없을 경우 기본 템플릿
+    const templates = {
+      behavior: `${gradeLabel} 학생으로서 ${personalityLabel} 성격을 가지고 있으며, ${keywords ? keywords + ' 등의 ' : ''}활동에서 뛰어난 모습을 보임.`,
+      learning: `${strengthLabel} 과목에서 핵심 개념을 정확히 이해하고 다양한 문제 상황에 적용하는 능력이 뛰어남.`,
+      creative: `창의적 체험활동에서 ${personalityLabel} 모습을 보이며 적극적으로 참여함.`,
+      reading: `한 학기 동안 다양한 분야의 책을 읽으며 독서의 즐거움을 알아가고 있음.`,
+      career: `진로 탐색 활동에 적극적으로 참여하며 자신의 흥미와 적성을 파악하려고 노력함.`,
+      special: `${keywords ? keywords + ' 대회에 참가하여 ' : ''}우수한 성적을 거두었으며, 앞으로의 성장이 기대되는 학생임.`,
+    };
+
+    return templates[category as keyof typeof templates] || templates.behavior;
   }
-
-  // 데이터베이스에 없을 경우 기본 템플릿
-  const templates = {
-    behavior: `${gradeOptions.find((g) => g.value === grade)?.label || ''} 학생으로서 ${personalityTypes.find((p) => p.value === personality)?.label || ''} 성격을 가지고 있으며, ${keywords ? keywords + ' 등의 ' : ''}활동에서 뛰어난 모습을 보임.`,
-    learning: `${strengthAreas.find((s) => s.value === strength)?.label || ''} 과목에서 핵심 개념을 정확히 이해하고 다양한 문제 상황에 적용하는 능력이 뛰어남.`,
-    creative: `창의적 체험활동에서 ${personalityTypes.find((p) => p.value === personality)?.label || ''} 모습을 보이며 적극적으로 참여함.`,
-    reading: `한 학기 동안 다양한 분야의 책을 읽으며 독서의 즐거움을 알아가고 있음.`,
-    career: `진로 탐색 활동에 적극적으로 참여하며 자신의 흥미와 적성을 파악하려고 노력함.`,
-    special: `${keywords ? keywords + ' 대회에 참가하여 ' : ''}우수한 성적을 거두었으며, 앞으로의 성장이 기대되는 학생임.`,
-  };
-
-  return templates[category as keyof typeof templates] || templates.behavior;
 };
 
 export default function SchoolRecordPage() {

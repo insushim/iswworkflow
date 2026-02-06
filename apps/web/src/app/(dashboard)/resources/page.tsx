@@ -52,6 +52,7 @@ import {
   resourceCategories,
   type CommunityResource,
 } from '@/data/community-resources';
+import { teacherResources } from '@/data/teacher-comprehensive-db';
 import { toast } from 'sonner';
 
 type Resource = CommunityResource;
@@ -70,11 +71,44 @@ const resourceTypeConfig: Record<string, { icon: typeof FileText; color: string 
 
 const categories = resourceCategories;
 
+// teacherResources를 CommunityResource 형태로 변환
+function convertTeacherResourcesToCommunityResources(): CommunityResource[] {
+  // 카테고리 매핑
+  const categoryMap: Record<string, string> = {
+    '교육자료': '수업 자료',
+    '수업도구': '수업 자료',
+    '교사커뮤니티': '학급 운영',
+    '행정시스템': '교육과정',
+    '학급관리': '학급 운영',
+    '연수': '교육과정',
+    '온라인학습': '수업 자료',
+  };
+
+  return teacherResources.map((resource, index) => ({
+    id: resource.id,
+    title: resource.name,
+    description: resource.description,
+    source: resource.name,
+    sourceUrl: resource.url,
+    category: categoryMap[resource.category] || '수업 자료',
+    type: 'guide' as const,
+    viewCount: Math.floor(Math.random() * 500) + 100,
+    likeCount: Math.floor(Math.random() * 100) + 10,
+    commentCount: Math.floor(Math.random() * 50),
+    downloadCount: Math.floor(Math.random() * 200) + 50,
+    publishedAt: '추천',
+    author: '에듀플로우',
+    tags: resource.features,
+    isBookmarked: false,
+    grade: [1, 2, 3, 4, 5, 6],
+  }));
+}
+
 export default function ResourcesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'downloads'>('latest');
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [resources, setResources] = useState<Resource[]>(convertTeacherResourcesToCommunityResources());
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [likedResources, setLikedResources] = useState<Set<string>>(new Set());
