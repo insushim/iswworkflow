@@ -72,13 +72,9 @@ export default function WorkflowsPage() {
   const userCustomTasks = extSettings?.customTasks || [];
   const allUserDuties = [...userRoles, ...userCustomTasks];
 
-  // 디버깅용 로그
-  console.log('[Workflows] 설정 로드:', { settings, userRoles, userCustomTasks, allUserDuties });
-
   // 사용자 업무에 맞는 카테고리 찾기
   const matchedCategories = useMemo(() => {
     const result = getMatchingCategories(allUserDuties, dutyToWorkflowCategoryMapping);
-    console.log('[Workflows] 매칭된 카테고리:', result);
     return result;
   }, [allUserDuties]);
 

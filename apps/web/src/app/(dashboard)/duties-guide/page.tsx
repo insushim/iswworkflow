@@ -1,7 +1,5 @@
 'use client';
 
-console.log('🔵🔵🔵 [DutiesGuide] 페이지 로드됨 - 버전 3.0 - 카드에 상세 업무 표시 🔵🔵🔵');
-
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -208,15 +206,10 @@ export default function DutiesGuidePage() {
   const userCustomTasks = extSettings?.customTasks || [];
   const allUserDuties = [...userRoles, ...userCustomTasks];
 
-  // 디버깅용 로그
-  console.log('[DutiesGuide] 설정 로드:', { settings, userRoles, userCustomTasks, allUserDuties });
 
   // 사용자 업무에 매칭되는 가이드 ID 찾기
   const matchedGuideIds = useMemo(() => {
-    console.log('[DutiesGuide] 사용자 업무:', allUserDuties);
-
     if (!allUserDuties || allUserDuties.length === 0) {
-      console.log('[DutiesGuide] 사용자 업무가 없음');
       return [];
     }
 
@@ -227,15 +220,10 @@ export default function DutiesGuidePage() {
         allUserDuties.some(userDuty => userDuty === duty)
       );
       if (hasMatch) {
-        console.log(`[DutiesGuide] 가이드 매칭됨: ${guideId}`, {
-          relatedDuties,
-          matchedWith: allUserDuties.filter(u => relatedDuties.includes(u))
-        });
         matched.push(guideId);
       }
     });
 
-    console.log('[DutiesGuide] 최종 매칭된 가이드 ID:', matched);
     return matched;
   }, [allUserDuties]);
 

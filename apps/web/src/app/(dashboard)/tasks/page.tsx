@@ -1,7 +1,6 @@
 'use client';
 
-// v2.0 - Firebase → localStorage 전환 + 기본 업무 자동 생성
-console.log('📋 [Tasks] v2.0 - localStorage 기반 + 기본 업무 자동 생성');
+// v2.0 - localStorage 기반 + 기본 업무 자동 생성
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

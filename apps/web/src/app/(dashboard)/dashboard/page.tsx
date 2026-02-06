@@ -1,20 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -24,609 +15,499 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Calendar as CalendarIcon,
-  Clock,
-  MapPin,
-  Bell,
-  AlertTriangle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
   CheckCircle2,
   Circle,
-  Trash2,
-  Edit,
+  Clock,
+  AlertTriangle,
+  ChevronRight,
   FileText,
-  ClipboardList,
-  Settings,
   Sparkles,
+  CalendarDays,
+  ClipboardList,
+  BookOpen,
+  Users,
+  GraduationCap,
+  Star,
+  Bell,
+  Target,
+  Lightbulb,
+  AlertCircle,
+  Monitor,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import {
+  type TeacherRole,
+  type MonthlyTaskItem,
+  getCurrentMonthTasks,
+  getTasksByRole,
+  getCriticalTasks,
+  getNEISTasks,
+  dailyRoutineTasks,
+  weeklyRoutineTasks,
+  newTeacherChecklists,
+  departments,
+  teacherResources,
+} from '@/data/teacher-comprehensive-db';
 
-// 일정 타입
-interface CalendarEvent {
-  id: string;
-  title: string;
-  description?: string;
-  date: string; // YYYY-MM-DD
-  time?: string;
-  location?: string;
-  type: 'deadline' | 'meeting' | 'event' | 'reminder' | 'task';
-  priority: 'high' | 'medium' | 'low';
-  isCompleted: boolean;
-  createdAt: string;
+const SETTINGS_KEY = 'eduflow_teacher_settings';
+const COMPLETED_TASKS_KEY = 'eduflow_completed_tasks';
+
+interface TeacherSettings {
+  name: string;
+  role: TeacherRole;
+  grade?: number;
+  department?: string;
+  isNewTeacher: boolean;
+  setupComplete: boolean;
 }
 
-// localStorage 키
-const EVENTS_STORAGE_KEY = 'eduflow_calendar_events';
-const TASKS_STORAGE_KEY = 'eduflow_tasks';
-
-const eventTypeConfig = {
-  deadline: { label: '마감', color: 'bg-red-500', textColor: 'text-red-600' },
-  meeting: { label: '회의', color: 'bg-blue-500', textColor: 'text-blue-600' },
-  event: { label: '행사', color: 'bg-green-500', textColor: 'text-green-600' },
-  reminder: { label: '알림', color: 'bg-yellow-500', textColor: 'text-yellow-600' },
-  task: { label: '업무', color: 'bg-purple-500', textColor: 'text-purple-600' },
+const priorityConfig = {
+  critical: { label: '필수', color: 'bg-red-500 text-white', textColor: 'text-red-600', icon: AlertTriangle },
+  high: { label: '중요', color: 'bg-orange-500 text-white', textColor: 'text-orange-600', icon: AlertCircle },
+  medium: { label: '보통', color: 'bg-blue-500 text-white', textColor: 'text-blue-600', icon: Circle },
+  low: { label: '낮음', color: 'bg-gray-400 text-white', textColor: 'text-gray-500', icon: Circle },
 };
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
-const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
 export default function DashboardPage() {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [userName, setUserName] = useState('선생님');
+  const [settings, setSettings] = useState<TeacherSettings | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
 
-  // 새 일정 폼 상태
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    description: '',
-    date: '',
-    time: '',
-    location: '',
-    type: 'event' as CalendarEvent['type'],
-    priority: 'medium' as CalendarEvent['priority'],
-  });
+  // 설정값
+  const [setupName, setSetupName] = useState('');
+  const [setupRole, setSetupRole] = useState<TeacherRole>('homeroom');
+  const [setupGrade, setSetupGrade] = useState<string>('');
+  const [setupDepartment, setSetupDepartment] = useState('');
+  const [setupIsNew, setSetupIsNew] = useState(false);
 
-  // localStorage에서 일정 로드
   useEffect(() => {
-    const loadEvents = () => {
-      try {
-        // 일정 로드
-        const savedEvents = localStorage.getItem(EVENTS_STORAGE_KEY);
-        const calendarEvents: CalendarEvent[] = savedEvents ? JSON.parse(savedEvents) : [];
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (saved) {
+      setSettings(JSON.parse(saved));
+    } else {
+      setShowSetup(true);
+    }
 
-        // 업무도 일정으로 변환해서 추가
-        const savedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
-        if (savedTasks) {
-          const tasks = JSON.parse(savedTasks);
-          const taskEvents: CalendarEvent[] = tasks
-            .filter((t: any) => t.dueDate)
-            .map((t: any) => ({
-              id: `task-${t.id}`,
-              title: t.title,
-              description: t.description,
-              date: t.dueDate,
-              type: 'task' as const,
-              priority: t.priority || 'medium',
-              isCompleted: t.status === 'completed',
-              createdAt: t.createdAt,
-            }));
-
-          setEvents([...calendarEvents, ...taskEvents]);
-        } else {
-          setEvents(calendarEvents);
-        }
-
-        // 사용자 이름 로드
-        const userSettings = localStorage.getItem('eduflow_user_settings');
-        if (userSettings) {
-          const settings = JSON.parse(userSettings);
-          if (settings.displayName) {
-            setUserName(settings.displayName);
-          }
-        }
-      } catch (error) {
-        console.error('일정 로드 실패:', error);
-      }
-    };
-
-    loadEvents();
+    const savedCompleted = localStorage.getItem(COMPLETED_TASKS_KEY);
+    if (savedCompleted) {
+      setCompletedTaskIds(new Set(JSON.parse(savedCompleted)));
+    }
   }, []);
 
-  // 일정 저장
-  const saveEvents = (newEvents: CalendarEvent[]) => {
-    // task 타입은 제외하고 저장 (tasks는 별도 관리)
-    const calendarOnlyEvents = newEvents.filter(e => e.type !== 'task');
-    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(calendarOnlyEvents));
-  };
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  // 달력 날짜 생성
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const calendarDays: (number | null)[] = [];
-  for (let i = 0; i < firstDayOfMonth; i++) {
-    calendarDays.push(null);
-  }
-  for (let i = 1; i <= daysInMonth; i++) {
-    calendarDays.push(i);
-  }
-
-  const getEventsForDate = (day: number) => {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return events.filter((event) => event.date === dateStr);
-  };
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(new Date(year, month + (direction === 'next' ? 1 : -1), 1));
-  };
-
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const isToday = (day: number) =>
-    day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-
-  // 오늘의 일정
-  const todayEvents = events.filter(e => e.date === todayStr);
-
-  // 다가오는 일정 (7일 이내)
-  const upcomingEvents = useMemo(() => {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 7);
-    const futureDateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
-
-    return events
-      .filter((e) => !e.isCompleted && e.date >= todayStr && e.date <= futureDateStr)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 8);
-  }, [events, todayStr]);
-
-  // 선택된 날짜의 일정
-  const selectedDateEvents = selectedDate
-    ? events.filter((e) => e.date === selectedDate)
-    : [];
-
-  // 일정 추가
-  const handleAddEvent = () => {
-    if (!newEvent.title.trim() || !newEvent.date) {
-      toast.error('일정명과 날짜를 입력해주세요.');
+  const handleSaveSettings = () => {
+    if (!setupName.trim()) {
+      toast.error('이름을 입력해주세요.');
       return;
     }
-
-    const event: CalendarEvent = {
-      id: `event-${Date.now()}`,
-      ...newEvent,
-      isCompleted: false,
-      createdAt: new Date().toISOString(),
+    const newSettings: TeacherSettings = {
+      name: setupName,
+      role: setupRole,
+      grade: setupGrade ? parseInt(setupGrade) : undefined,
+      department: setupDepartment || undefined,
+      isNewTeacher: setupIsNew,
+      setupComplete: true,
     };
+    setSettings(newSettings);
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+    setShowSetup(false);
+    toast.success('설정이 저장되었습니다!');
+  };
 
-    const updatedEvents = [...events, event];
-    setEvents(updatedEvents);
-    saveEvents(updatedEvents);
-
-    setNewEvent({
-      title: '',
-      description: '',
-      date: '',
-      time: '',
-      location: '',
-      type: 'event',
-      priority: 'medium',
+  const toggleTask = (taskId: string) => {
+    setCompletedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      localStorage.setItem(COMPLETED_TASKS_KEY, JSON.stringify(Array.from(next)));
+      return next;
     });
-    setIsAddDialogOpen(false);
-    toast.success('일정이 추가되었습니다.');
   };
 
-  // 일정 수정
-  const handleEditEvent = () => {
-    if (!editingEvent) return;
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const monthData = getCurrentMonthTasks();
+  const role = settings?.role || 'homeroom';
 
-    const updatedEvents = events.map((e) =>
-      e.id === editingEvent.id ? editingEvent : e
+  const myTasks = useMemo(() => {
+    return getTasksByRole(currentMonth, role);
+  }, [currentMonth, role]);
+
+  const criticalTasks = useMemo(() => getCriticalTasks(currentMonth), [currentMonth]);
+  const neisTasks = useMemo(() => getNEISTasks(currentMonth), [currentMonth]);
+
+  const completedCount = myTasks.filter(t => completedTaskIds.has(t.id)).length;
+  const progressPercent = myTasks.length > 0 ? Math.round((completedCount / myTasks.length) * 100) : 0;
+
+  if (!settings || showSetup) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="h-8 w-8 text-white" />
+            </div>
+            <CardTitle className="text-2xl">에듀플로우에 오신 것을 환영합니다!</CardTitle>
+            <CardDescription>
+              맞춤형 업무 도우미를 위해 몇 가지 정보를 알려주세요.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="name">선생님 성함</Label>
+              <Input
+                id="name"
+                value={setupName}
+                onChange={e => setSetupName(e.target.value)}
+                placeholder="예: 김선생"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>담당 역할</Label>
+              <Select value={setupRole} onValueChange={(v: TeacherRole) => setSetupRole(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="homeroom">담임교사</SelectItem>
+                  <SelectItem value="non-homeroom">비담임교사 (교과전담 등)</SelectItem>
+                  <SelectItem value="head-teacher">부장교사 (보직교사)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(setupRole === 'homeroom' || setupRole === 'non-homeroom') && (
+              <div className="space-y-2">
+                <Label>담당 학년</Label>
+                <Select value={setupGrade} onValueChange={setSetupGrade}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="학년 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6].map(g => (
+                      <SelectItem key={g} value={String(g)}>{g}학년</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {setupRole === 'head-teacher' && (
+              <div className="space-y-2">
+                <Label>소속 부서</Label>
+                <Select value={setupDepartment} onValueChange={setSetupDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="부서 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map(d => (
+                      <SelectItem key={d.id} value={d.nameShort}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="newTeacher"
+                checked={setupIsNew}
+                onCheckedChange={(checked) => setSetupIsNew(checked === true)}
+              />
+              <Label htmlFor="newTeacher" className="text-sm">
+                올해 처음 발령받은 초임교사입니다
+              </Label>
+            </div>
+
+            <Button onClick={handleSaveSettings} className="w-full" size="lg">
+              시작하기
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
-    setEvents(updatedEvents);
-    saveEvents(updatedEvents);
-    setIsEditDialogOpen(false);
-    setEditingEvent(null);
-    toast.success('일정이 수정되었습니다.');
-  };
-
-  // 일정 삭제
-  const handleDeleteEvent = (eventId: string) => {
-    if (eventId.startsWith('task-')) {
-      toast.error('업무는 업무 관리 페이지에서 삭제해주세요.');
-      return;
-    }
-
-    const updatedEvents = events.filter((e) => e.id !== eventId);
-    setEvents(updatedEvents);
-    saveEvents(updatedEvents);
-    toast.success('일정이 삭제되었습니다.');
-  };
-
-  // 일정 완료 토글
-  const toggleEventComplete = (event: CalendarEvent) => {
-    if (event.id.startsWith('task-')) {
-      toast.info('업무 완료는 업무 관리 페이지에서 변경해주세요.');
-      return;
-    }
-
-    const updatedEvents = events.map((e) =>
-      e.id === event.id ? { ...e, isCompleted: !e.isCompleted } : e
-    );
-    setEvents(updatedEvents);
-    saveEvents(updatedEvents);
-  };
-
-  // 날짜 더블클릭으로 일정 추가
-  const openAddDialogForDate = (dateStr: string) => {
-    setNewEvent({ ...newEvent, date: dateStr });
-    setIsAddDialogOpen(true);
-  };
-
-  // D-Day 계산
-  const getDaysUntil = (dateStr: string) => {
-    const eventDate = new Date(dateStr);
-    const diff = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Welcome Header */}
+    <div className="space-y-6">
+      {/* 상단 인사 */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            안녕하세요, {userName}님! 👋
+            {settings.name} 선생님, 안녕하세요!
           </h1>
           <p className="text-muted-foreground text-sm">
-            {today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 ({DAYS[today.getDay()]})
+            {now.getFullYear()}년 {currentMonth}월 {now.getDate()}일 ({DAYS[now.getDay()]})
+            {settings.role === 'homeroom' && settings.grade && ` · ${settings.grade}학년 담임`}
+            {settings.role === 'head-teacher' && settings.department && ` · ${settings.department}`}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/settings">
-              <Settings className="h-4 w-4 mr-2" />
-              설정
-            </Link>
+          <Button variant="outline" size="sm" onClick={() => setShowSetup(true)}>
+            설정 변경
           </Button>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            일정 추가
+          <Button asChild size="sm">
+            <Link href="/ai-chat">
+              <Sparkles className="h-4 w-4 mr-1" />
+              AI 도우미
+            </Link>
           </Button>
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* 이번 달 진행률 */}
+      <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-indigo-200 dark:border-indigo-800">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold">{monthData?.title || `${currentMonth}월 업무`}</h2>
+              <p className="text-sm text-muted-foreground">{monthData?.summary}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-indigo-600">{progressPercent}%</p>
+              <p className="text-xs text-muted-foreground">{completedCount}/{myTasks.length} 완료</p>
+            </div>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+        </CardContent>
+      </Card>
+
+      {/* 빠른 통계 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-lg">
-                <CalendarIcon className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{todayEvents.length}</p>
-                <p className="text-xs text-muted-foreground">오늘 일정</p>
-              </div>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{criticalTasks.filter(t => !completedTaskIds.has(t.id)).length}</p>
+              <p className="text-xs text-muted-foreground">필수 업무</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-500 rounded-lg">
-                <Bell className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{upcomingEvents.length}</p>
-                <p className="text-xs text-muted-foreground">이번 주 일정</p>
-              </div>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <Monitor className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{neisTasks.filter(t => !completedTaskIds.has(t.id)).length}</p>
+              <p className="text-xs text-muted-foreground">NEIS 입력</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 border-red-200 dark:border-red-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {events.filter(e => e.type === 'deadline' && !e.isCompleted && e.date >= todayStr).length}
-                </p>
-                <p className="text-xs text-muted-foreground">마감 예정</p>
-              </div>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{completedCount}</p>
+              <p className="text-xs text-muted-foreground">완료</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {events.filter(e => e.isCompleted).length}
-                </p>
-                <p className="text-xs text-muted-foreground">완료</p>
-              </div>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Target className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{myTasks.length - completedCount}</p>
+              <p className="text-xs text-muted-foreground">남은 업무</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Calendar - 3 cols */}
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 이번 달 업무 체크리스트 - 2 cols */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-bold">
-                {year}년 {MONTHS[month]}
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                {currentMonth}월 업무 체크리스트
               </CardTitle>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentDate(new Date())}
-                >
-                  오늘
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              <Badge variant="secondary">
+                {role === 'homeroom' ? '담임' : role === 'head-teacher' ? '부장' : '비담임'}
+              </Badge>
             </div>
           </CardHeader>
-          <CardContent className="p-3">
-            {/* Day headers */}
-            <div className="grid grid-cols-7 mb-1">
-              {DAYS.map((day, index) => (
-                <div
-                  key={day}
-                  className={`text-center text-xs font-medium py-2 ${
-                    index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-muted-foreground'
-                  }`}
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {calendarDays.map((day, index) => {
-                if (day === null) {
-                  return <div key={`empty-${index}`} className="h-20 md:h-24" />;
-                }
-
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayEvents = getEventsForDate(day);
-                const isSelected = selectedDate === dateStr;
-                const dayOfWeek = (firstDayOfMonth + day - 1) % 7;
-
-                return (
-                  <div
-                    key={day}
-                    onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                    onDoubleClick={() => openAddDialogForDate(dateStr)}
-                    className={`
-                      h-20 md:h-24 p-1 border rounded-lg cursor-pointer transition-all
-                      ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent/50'}
-                      ${isToday(day) ? 'bg-primary/10' : ''}
-                    `}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span
-                        className={`
-                          text-xs md:text-sm font-medium w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full
-                          ${isToday(day) ? 'bg-primary text-primary-foreground' : ''}
-                          ${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : ''}
-                        `}
-                      >
-                        {day}
-                      </span>
-                      {dayEvents.length > 0 && (
-                        <Badge variant="secondary" className="text-[9px] h-4 px-1">
-                          {dayEvents.length}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="space-y-0.5 overflow-hidden">
-                      {dayEvents.slice(0, 2).map((event) => (
-                        <div
-                          key={event.id}
-                          className={`
-                            text-[9px] md:text-[10px] px-1 py-0.5 rounded truncate
-                            ${eventTypeConfig[event.type].color} text-white
-                            ${event.isCompleted ? 'opacity-50 line-through' : ''}
-                          `}
+          <CardContent>
+            <ScrollArea className="h-[500px] pr-2">
+              <div className="space-y-3">
+                {myTasks.length > 0 ? myTasks.map(task => {
+                  const isCompleted = completedTaskIds.has(task.id);
+                  const config = priorityConfig[task.priority];
+                  return (
+                    <div
+                      key={task.id}
+                      className={`p-4 rounded-lg border transition-all ${
+                        isCompleted ? 'bg-muted/50 opacity-70' : 'hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => toggleTask(task.id)}
+                          className="mt-0.5 flex-shrink-0"
                         >
-                          {event.title}
+                          {isCompleted ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />
+                          )}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <Badge className={`text-[10px] px-1.5 py-0 ${config.color}`}>
+                              {config.label}
+                            </Badge>
+                            {task.neisRequired && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-600 border-blue-300">
+                                NEIS
+                              </Badge>
+                            )}
+                            {task.department && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                {task.department}
+                              </Badge>
+                            )}
+                            {task.deadline && (
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                <Clock className="h-3 w-3" />
+                                {task.deadline}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className={`text-sm font-medium ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                            {task.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {task.description}
+                          </p>
+                          {!isCompleted && task.details.length > 0 && (
+                            <ul className="mt-2 space-y-0.5">
+                              {task.details.slice(0, 3).map((detail, i) => (
+                                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                  <ChevronRight className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  {detail}
+                                </li>
+                              ))}
+                              {task.details.length > 3 && (
+                                <li className="text-xs text-primary cursor-pointer">
+                                  + {task.details.length - 3}개 더보기
+                                </li>
+                              )}
+                            </ul>
+                          )}
+                          {task.neisPath && !isCompleted && (
+                            <div className="mt-2 text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                              {task.neisPath}
+                            </div>
+                          )}
                         </div>
-                      ))}
-                      {dayEvents.length > 2 && (
-                        <div className="text-[9px] text-muted-foreground px-1">
-                          +{dayEvents.length - 2}개
-                        </div>
-                      )}
+                      </div>
                     </div>
+                  );
+                }) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>이번 달 등록된 업무가 없습니다.</p>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Legend */}
-            <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t">
-              {Object.entries(eventTypeConfig).map(([key, config]) => (
-                <div key={key} className="flex items-center gap-1.5 text-xs">
-                  <div className={`w-2.5 h-2.5 rounded ${config.color}`} />
-                  <span className="text-muted-foreground">{config.label}</span>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
 
-        {/* Sidebar - 1 col */}
+        {/* 사이드바 - 1 col */}
         <div className="space-y-4">
-          {/* Selected Date Events */}
-          {selectedDate ? (
-            <Card>
+          {/* 초임교사 가이드 */}
+          {settings.isNewTeacher && (
+            <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-950/20">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  📅 {selectedDate.replace(/-/g, '.')}
+                <CardTitle className="text-sm font-medium flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                  <Star className="h-4 w-4" />
+                  초임교사 가이드
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3">
-                {selectedDateEvents.length > 0 ? (
-                  <ScrollArea className="h-[200px]">
-                    <div className="space-y-2">
-                      {selectedDateEvents.map((event) => (
-                        <div
-                          key={event.id}
-                          className={`p-2 rounded-lg border ${event.isCompleted ? 'opacity-50' : ''}`}
-                        >
-                          <div className="flex items-start gap-2">
-                            <button
-                              onClick={() => toggleEventComplete(event)}
-                              className="mt-0.5"
-                            >
-                              {event.isCompleted ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <Circle className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1">
-                                <Badge className={`${eventTypeConfig[event.type].color} text-white text-[9px] px-1 py-0`}>
-                                  {eventTypeConfig[event.type].label}
-                                </Badge>
-                              </div>
-                              <p className={`text-sm font-medium mt-0.5 ${event.isCompleted ? 'line-through' : ''}`}>
-                                {event.title}
-                              </p>
-                              {event.time && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                  <Clock className="h-3 w-3" />
-                                  {event.time}
-                                </p>
-                              )}
-                            </div>
-                            {!event.id.startsWith('task-') && (
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => {
-                                    setEditingEvent(event);
-                                    setIsEditDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-destructive"
-                                  onClick={() => handleDeleteEvent(event.id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
+                <div className="space-y-2">
+                  {newTeacherChecklists.slice(0, 2).map(checklist => (
+                    <div key={checklist.category} className="text-sm">
+                      <p className="font-medium text-xs mb-1">{checklist.category}</p>
+                      {checklist.items.slice(0, 3).map(item => (
+                        <div key={item.id} className="flex items-center gap-2 py-0.5">
+                          <Circle className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-xs truncate">{item.title}</span>
                         </div>
                       ))}
                     </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      일정이 없습니다
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openAddDialogForDate(selectedDate)}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      추가
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  다가오는 일정
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3">
-                <ScrollArea className="h-[200px]">
-                  {upcomingEvents.length > 0 ? (
-                    <div className="space-y-2">
-                      {upcomingEvents.map((event) => {
-                        const daysUntil = getDaysUntil(event.date);
-                        return (
-                          <div
-                            key={event.id}
-                            className="p-2 rounded-lg border hover:bg-accent/50 cursor-pointer"
-                            onClick={() => {
-                              setSelectedDate(event.date);
-                              const [y, m] = event.date.split('-').map(Number);
-                              setCurrentDate(new Date(y, m - 1, 1));
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <Badge className={`${eventTypeConfig[event.type].color} text-white text-[9px] px-1 py-0`}>
-                                {eventTypeConfig[event.type].label}
-                              </Badge>
-                              <Badge
-                                variant={daysUntil <= 1 ? 'destructive' : daysUntil <= 3 ? 'default' : 'secondary'}
-                                className="text-[9px]"
-                              >
-                                {daysUntil === 0 ? '오늘' : `D-${daysUntil}`}
-                              </Badge>
-                            </div>
-                            <p className="text-sm font-medium mt-1 truncate">{event.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {event.date.replace(/-/g, '.')}
-                              {event.time && ` ${event.time}`}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      이번 주 예정된 일정이 없습니다
-                    </p>
-                  )}
-                </ScrollArea>
+                  ))}
+                  <Button variant="ghost" size="sm" className="w-full text-xs" asChild>
+                    <Link href="/duties-guide">
+                      전체 가이드 보기
+                      <ChevronRight className="h-3 w-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Quick Links */}
+          {/* 일일 루틴 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                일일 루틴
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+              <div className="space-y-1.5">
+                {dailyRoutineTasks.filter(t => t.role === role || t.role === 'all').map(task => (
+                  <div
+                    key={task.id}
+                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent/50 cursor-pointer"
+                    onClick={() => toggleTask(task.id)}
+                  >
+                    {completedTaskIds.has(task.id) ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className={`text-xs font-medium ${completedTaskIds.has(task.id) ? 'line-through text-muted-foreground' : ''}`}>
+                        {task.title}
+                      </p>
+                      {task.estimatedMinutes && (
+                        <p className="text-[10px] text-muted-foreground">{task.estimatedMinutes}분</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 바로가기 */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">바로가기</CardTitle>
@@ -636,240 +517,73 @@ export default function DashboardPage() {
                 <Button variant="outline" size="sm" className="h-auto py-3 flex-col gap-1" asChild>
                   <Link href="/tasks">
                     <ClipboardList className="h-4 w-4" />
-                    <span className="text-xs">업무관리</span>
+                    <span className="text-[10px]">업무관리</span>
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" className="h-auto py-3 flex-col gap-1" asChild>
                   <Link href="/documents">
                     <FileText className="h-4 w-4" />
-                    <span className="text-xs">문서작성</span>
+                    <span className="text-[10px]">문서작성</span>
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" className="h-auto py-3 flex-col gap-1" asChild>
                   <Link href="/ai-chat">
                     <Sparkles className="h-4 w-4" />
-                    <span className="text-xs">AI 도우미</span>
+                    <span className="text-[10px]">AI 도우미</span>
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" className="h-auto py-3 flex-col gap-1" asChild>
                   <Link href="/duties-guide">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span className="text-xs">업무가이드</span>
+                    <BookOpen className="h-4 w-4" />
+                    <span className="text-[10px]">업무가이드</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="h-auto py-3 flex-col gap-1" asChild>
+                  <Link href="/school-record">
+                    <GraduationCap className="h-4 w-4" />
+                    <span className="text-[10px]">생활기록부</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="h-auto py-3 flex-col gap-1" asChild>
+                  <Link href="/monthly-tasks">
+                    <CalendarDays className="h-4 w-4" />
+                    <span className="text-[10px]">월별 업무</span>
                   </Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
+
+          {/* 유용한 사이트 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Lightbulb className="h-4 w-4" />
+                유용한 사이트
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+              <div className="space-y-1.5">
+                {teacherResources.slice(0, 5).map(resource => (
+                  <a
+                    key={resource.id}
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50 text-xs group"
+                  >
+                    <div>
+                      <p className="font-medium group-hover:text-primary">{resource.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{resource.description}</p>
+                    </div>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  </a>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      {/* Add Event Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>새 일정 추가</DialogTitle>
-            <DialogDescription>
-              달력에 새로운 일정을 추가합니다.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">일정명 *</Label>
-              <Input
-                id="title"
-                value={newEvent.title}
-                onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                placeholder="일정명을 입력하세요"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="date">날짜 *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={newEvent.date}
-                  onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="time">시간</Label>
-                <Input
-                  id="time"
-                  type="time"
-                  value={newEvent.time}
-                  onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>유형</Label>
-                <Select
-                  value={newEvent.type}
-                  onValueChange={(value: CalendarEvent['type']) =>
-                    setNewEvent({ ...newEvent, type: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="event">행사</SelectItem>
-                    <SelectItem value="deadline">마감</SelectItem>
-                    <SelectItem value="meeting">회의</SelectItem>
-                    <SelectItem value="reminder">알림</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>우선순위</Label>
-                <Select
-                  value={newEvent.priority}
-                  onValueChange={(value: CalendarEvent['priority']) =>
-                    setNewEvent({ ...newEvent, priority: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">높음</SelectItem>
-                    <SelectItem value="medium">보통</SelectItem>
-                    <SelectItem value="low">낮음</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="location">장소</Label>
-              <Input
-                id="location"
-                value={newEvent.location}
-                onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                placeholder="장소를 입력하세요"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">메모</Label>
-              <Textarea
-                id="description"
-                value={newEvent.description}
-                onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                placeholder="메모를 입력하세요"
-                rows={2}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              취소
-            </Button>
-            <Button onClick={handleAddEvent}>
-              추가
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Event Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>일정 수정</DialogTitle>
-            <DialogDescription>
-              일정 정보를 수정합니다.
-            </DialogDescription>
-          </DialogHeader>
-          {editingEvent && (
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-title">일정명 *</Label>
-                <Input
-                  id="edit-title"
-                  value={editingEvent.title}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-time">시간</Label>
-                  <Input
-                    id="edit-time"
-                    type="time"
-                    value={editingEvent.time || ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, time: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-location">장소</Label>
-                  <Input
-                    id="edit-location"
-                    value={editingEvent.location || ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>유형</Label>
-                  <Select
-                    value={editingEvent.type}
-                    onValueChange={(value: CalendarEvent['type']) =>
-                      setEditingEvent({ ...editingEvent, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="event">행사</SelectItem>
-                      <SelectItem value="deadline">마감</SelectItem>
-                      <SelectItem value="meeting">회의</SelectItem>
-                      <SelectItem value="reminder">알림</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>우선순위</Label>
-                  <Select
-                    value={editingEvent.priority}
-                    onValueChange={(value: CalendarEvent['priority']) =>
-                      setEditingEvent({ ...editingEvent, priority: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">높음</SelectItem>
-                      <SelectItem value="medium">보통</SelectItem>
-                      <SelectItem value="low">낮음</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-description">메모</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editingEvent.description || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                  rows={2}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              취소
-            </Button>
-            <Button onClick={handleEditEvent}>
-              저장
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

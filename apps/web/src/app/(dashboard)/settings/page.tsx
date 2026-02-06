@@ -1,9 +1,5 @@
 'use client';
 
-// 🔴 버전 12.0 - 업무 매핑 확장 (졸업앨범, 방송부 등 사용자 정의 업무 가이드 연동)
-const BUILD_VERSION = 'v12.0-DUTY-MAPPING-EXTENDED';
-console.log('🔴🔴🔴 [Settings] 버전 12.0 - 업무 매핑 확장 🔴🔴🔴');
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,16 +70,6 @@ export default function SettingsPage() {
   // 사용자 정의 업무 추가 상태
   const [newCustomTask, setNewCustomTask] = useState('');
 
-  // 페이지 로드 확인 로그
-  useEffect(() => {
-    console.log('🔴🔴🔴 [Settings] 컴포넌트 마운트됨 - 버전 6.0 FINAL 🔴🔴🔴');
-    console.log('[Settings] user:', user);
-    console.log('[Settings] user?.uid:', user?.uid);
-    console.log('[Settings] settings:', settings);
-    console.log('[Settings] loading:', loading);
-    console.log('[Settings] error:', error);
-  }, [user, settings, loading, error]);
-
   // Initialize form data from settings
   useEffect(() => {
     if (settings) {
@@ -123,10 +109,6 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
-    console.log('[Settings] 프로필 저장 시작:', {
-      roles: formData.roles,
-      customTasks: formData.customTasks,
-    });
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateSettings({
@@ -138,7 +120,6 @@ export default function SettingsPage() {
         customTasks: formData.customTasks, // 사용자 정의 업무 추가
         educationOfficeId: formData.educationOfficeId,
       } as any);
-      console.log('[Settings] 프로필 저장 성공');
     } catch (err) {
       console.error('[Settings] 프로필 저장 실패:', err);
     } finally {
@@ -179,13 +160,11 @@ export default function SettingsPage() {
       return;
     }
     const newCustomTasks = [...formData.customTasks, newCustomTask.trim()];
-    console.log('[Settings] 사용자 정의 업무 추가:', newCustomTask.trim());
     setFormData({ ...formData, customTasks: newCustomTasks });
     setNewCustomTask('');
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateSettings({ customTasks: newCustomTasks } as any);
-      console.log('[Settings] 사용자 정의 업무 저장 성공:', newCustomTasks);
     } catch (err) {
       console.error('[Settings] 사용자 정의 업무 추가 실패:', err);
     }
@@ -194,12 +173,10 @@ export default function SettingsPage() {
   // 사용자 정의 업무 삭제
   const handleRemoveCustomTask = async (task: string) => {
     const newCustomTasks = formData.customTasks.filter((t) => t !== task);
-    console.log('[Settings] 사용자 정의 업무 삭제:', task);
     setFormData({ ...formData, customTasks: newCustomTasks });
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateSettings({ customTasks: newCustomTasks } as any);
-      console.log('[Settings] 사용자 정의 업무 삭제 성공:', newCustomTasks);
     } catch (err) {
       console.error('[Settings] 사용자 정의 업무 삭제 실패:', err);
     }
@@ -253,8 +230,6 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">
           계정 및 앱 설정을 관리합니다
         </p>
-        {/* 버전 표시 - 배포 확인용 */}
-        <p className="text-xs text-red-500 mt-1 font-mono">Build: {BUILD_VERSION}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

@@ -3,19 +3,7 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
-// ============================================
-// 🔥 FIREBASE SDK 디버그 로거
-// ============================================
-const DEBUG_FIREBASE = true;
-const fbLog = (message: string, data?: unknown) => {
-  if (!DEBUG_FIREBASE) return;
-  const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
-  console.log(
-    `%c[${timestamp}] 🔥 [FIREBASE-SDK] ${message}`,
-    'color: orange; font-weight: bold;',
-    data !== undefined ? data : ''
-  );
-};
+const fbLog = (_message: string, _data?: unknown) => {};
 
 // Firebase 설정
 const firebaseConfig = {
