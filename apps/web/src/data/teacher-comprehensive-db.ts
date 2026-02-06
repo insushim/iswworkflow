@@ -1355,6 +1355,91 @@ export const teacherResources: TeacherResource[] = [
 ];
 
 // ================================================================
+// 초임교사 주요 실수 및 대응법 (교차검증 기반)
+// ================================================================
+export interface CommonMistake {
+  id: string;
+  category: string;
+  mistake: string;
+  consequence: string;
+  prevention: string;
+  severity: 'critical' | 'high' | 'medium';
+}
+
+export const commonMistakes: CommonMistake[] = [
+  {
+    id: 'mis-001', category: 'NEIS',
+    mistake: '출결을 몰아서 입력',
+    consequence: '출결 기록 오류, 감사 시 지적사항',
+    prevention: '매일 수업 전/후 즉시 입력 (당일 처리 원칙)',
+    severity: 'critical',
+  },
+  {
+    id: 'mis-002', category: 'NEIS',
+    mistake: '전입생 등록 후 전출교에 자료 미요청',
+    consequence: '학생 생활기록부 누락',
+    prevention: '전입 등록 즉시 전출교에 자료 요청',
+    severity: 'critical',
+  },
+  {
+    id: 'mis-003', category: 'NEIS',
+    mistake: '교과학습발달상황 입력 시 학생 혼동',
+    consequence: '생활기록부 기재 오류 (정정대장 절차 필요)',
+    prevention: '입력 후 반드시 학생별 교차 검증',
+    severity: 'critical',
+  },
+  {
+    id: 'mis-004', category: 'NEIS',
+    mistake: '교육과정 미등록 상태에서 출결 관리 시도',
+    consequence: 'NEIS 오류 발생',
+    prevention: '과목 개설 → 시간표 → 출결 순서 준수',
+    severity: 'high',
+  },
+  {
+    id: 'mis-005', category: '공문서',
+    mistake: '결재경로 미설정',
+    consequence: '문서 결재 지연, 행정 오류',
+    prevention: '접수 문서에 부서장→교감→교장 결재경로 설정',
+    severity: 'high',
+  },
+  {
+    id: 'mis-006', category: '공문서',
+    mistake: '기안문 "끝." 미기재',
+    consequence: '공문서 형식 오류',
+    prevention: '본문 또는 붙임 마지막에 반드시 "끝." 기재',
+    severity: 'medium',
+  },
+  {
+    id: 'mis-007', category: '학부모',
+    mistake: '개인 SNS로 학부모와 소통',
+    consequence: '사생활 침해, 민원 발생 가능',
+    prevention: '하이클래스, e알림이 등 공식 채널 사용',
+    severity: 'high',
+  },
+  {
+    id: 'mis-008', category: '학부모',
+    mistake: '학부모 민원에 즉답 약속',
+    consequence: '잘못된 정보 전달, 추후 분쟁',
+    prevention: '"확인 후 연락드리겠습니다" 대응, 상담 기록 작성',
+    severity: 'high',
+  },
+  {
+    id: 'mis-009', category: '학교폭력',
+    mistake: '학교폭력 인지 후 보고 지연',
+    consequence: '법적 문제 (48시간 이내 교육청 보고 의무)',
+    prevention: '인지 즉시 생활지도부장→학교장 보고',
+    severity: 'critical',
+  },
+  {
+    id: 'mis-010', category: '생활기록부',
+    mistake: '동일 문구 복사/붙여넣기',
+    consequence: '감사 지적, 학생별 개별 기재 원칙 위반',
+    prevention: '학생별 구체적 행동/사례 중심 서술',
+    severity: 'high',
+  },
+];
+
+// ================================================================
 // 헬퍼 함수들
 // ================================================================
 
