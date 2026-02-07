@@ -59,6 +59,7 @@ import {
   departments,
   teacherResources,
 } from '@/data/teacher-comprehensive-db';
+import { useUserSettings } from '@/hooks/useFirestore';
 
 const SETTINGS_KEY = 'eduflow_teacher_settings';
 const COMPLETED_TASKS_KEY = 'eduflow_completed_tasks';
@@ -82,6 +83,7 @@ const priorityConfig = {
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function DashboardPage() {
+  const { settings: firebaseSettings } = useUserSettings();
   const [settings, setSettings] = useState<TeacherSettings | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
@@ -92,6 +94,66 @@ export default function DashboardPage() {
   const [setupGrade, setSetupGrade] = useState<string>('');
   const [setupDepartment, setSetupDepartment] = useState('');
   const [setupIsNew, setSetupIsNew] = useState(false);
+
+  // Firebase 설정에서 대시보드 설정 자동 동기화
+  useEffect(() => {
+    if (firebaseSettings) {
+      const ext = firebaseSettings as unknown as { roles?: string[]; customTasks?: string[]; educationOfficeId?: string };
+      const roles = ext.roles || [];
+      const displayName = firebaseSettings.displayName || '';
+
+      if (displayName || roles.length > 0) {
+        // Firebase 설정에서 역할 자동 매핑
+        let role: TeacherRole = 'homeroom';
+        let grade: number | undefined;
+        let department: string | undefined;
+
+        // 학년부장/업무부장 체크
+        if (roles.some(r => ['업무부장', '교무부장', '교감', '교장'].includes(r)) ||
+            roles.some(r => r.endsWith('부') || r.endsWith('부장'))) {
+          role = 'head-teacher';
+          department = roles.find(r => r.endsWith('부') || r.endsWith('부장')) || undefined;
+        }
+        // 학년부장은 head-teacher이지만 학년도 추출
+        if (roles.includes('학년부장')) {
+          role = 'head-teacher';
+          department = '학년부';
+        }
+        // 교과전담
+        if (roles.includes('교과전담교사')) {
+          role = 'non-homeroom';
+        }
+        // 담임교사 (학년 추출)
+        if (roles.includes('학급담임')) {
+          role = 'homeroom';
+        }
+        // 학년별 담임에서 학년 추출
+        const gradeRole = roles.find(r => /^(\d)학년 담임$/.test(r));
+        if (gradeRole) {
+          role = 'homeroom';
+          grade = parseInt(gradeRole);
+        }
+
+        const classInfo = firebaseSettings.classInfo || '';
+        if (!grade && classInfo) {
+          const match = classInfo.match(/(\d)학년/);
+          if (match) grade = parseInt(match[1]);
+        }
+
+        const newSettings: TeacherSettings = {
+          name: displayName,
+          role,
+          grade,
+          department,
+          isNewTeacher: false,
+          setupComplete: true,
+        };
+
+        setSettings(newSettings);
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+      }
+    }
+  }, [firebaseSettings]);
 
   useEffect(() => {
     const saved = localStorage.getItem(SETTINGS_KEY);
@@ -187,7 +249,7 @@ export default function DashboardPage() {
                 <SelectContent>
                   <SelectItem value="homeroom">담임교사</SelectItem>
                   <SelectItem value="non-homeroom">비담임교사 (교과전담 등)</SelectItem>
-                  <SelectItem value="head-teacher">부장교사 (보직교사)</SelectItem>
+                  <SelectItem value="head-teacher">부장교사 (업무부장/학년부장/보직교사)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
