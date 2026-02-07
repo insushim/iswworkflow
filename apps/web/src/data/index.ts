@@ -133,6 +133,9 @@ export {
 // 교육과정 성취기준
 export * from './curriculum-standards';
 
+// 교육과정 편성 종합 데이터 (시수, 단원, 평가, 시간표 등)
+export * from './curriculum-data';
+
 // 행사 체크리스트
 export * from './event-checklists';
 

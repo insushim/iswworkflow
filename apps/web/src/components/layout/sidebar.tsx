@@ -21,6 +21,7 @@ import {
   ClipboardList,
   BookMarked,
   Table2,
+  Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, memo, useCallback, useEffect, useTransition } from 'react';
@@ -48,6 +49,12 @@ const navigation = [
       { name: '워크플로우', href: '/workflows', icon: FolderKanban },
       { name: '문서 작성', href: '/documents', icon: FileText },
       { name: '생활기록부', href: '/school-record', icon: GraduationCap },
+    ],
+  },
+  {
+    title: '학년부장',
+    items: [
+      { name: '교육과정 편성', href: '/curriculum', icon: Crown },
     ],
   },
   {
