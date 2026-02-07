@@ -65,11 +65,16 @@ import {
   assessmentMethods,
   weeklyScheduleTemplates,
   subjectColors,
+  mandatoryEducations,
+  annualSchoolEvents,
+  SCHOOL_WEEKS,
   type GradeHours,
   type TextbookUnit,
   type MonthlyTheme,
   type CrossCurricularTheme,
   type WeeklyScheduleTemplate,
+  type MandatoryEducation,
+  type SchoolEvent,
 } from '@/data/curriculum-data';
 import { curriculumStandards, type CurriculumStandard } from '@/data/curriculum-standards';
 
@@ -121,6 +126,24 @@ interface WeeklyProgressEntry {
   notes: string;
 }
 
+interface CreativeActivityPlanItem {
+  area: '자율·자치활동' | '동아리활동' | '봉사활동' | '진로활동';
+  activityName: string;
+  hours: number;
+  operationMonths: number[];
+  description: string;
+}
+
+interface MandatoryEducationPlan {
+  educationId: string;
+  educationName: string;
+  category: string;
+  targetHours: number;
+  plannedHours: number;
+  operationMonths: number[];
+  notes: string;
+}
+
 interface CurriculumPlan {
   id: string;
   name: string;
@@ -137,6 +160,8 @@ interface CurriculumPlan {
   crossThemePlans: string[];
   assessmentPlans: string[];
   weeklyProgress: WeeklyProgressEntry[];
+  creativeActivityPlan: CreativeActivityPlanItem[];
+  mandatoryEducationPlan: MandatoryEducationPlan[];
   createdAt: string;
   updatedAt: string;
 }
@@ -269,6 +294,21 @@ function createDefaultPlan(grade: number, semester: 'first' | 'second' | 'full')
       dateRange: '',
       subjects: [],
       events: '',
+      notes: '',
+    })),
+    creativeActivityPlan: [
+      { area: '자율·자치활동', activityName: '학급회의/1인1역', hours: 34, operationMonths: [3,4,5,6,7,9,10,11,12], description: '매주 1시간 학급자치' },
+      { area: '동아리활동', activityName: '', hours: 34, operationMonths: [3,4,5,6,9,10,11,12], description: '' },
+      { area: '봉사활동', activityName: '', hours: 17, operationMonths: [3,4,5,6,9,10,11,12], description: '' },
+      { area: '진로활동', activityName: '', hours: 17, operationMonths: [4,5,10,11], description: '' },
+    ],
+    mandatoryEducationPlan: (typeof mandatoryEducations !== 'undefined' && Array.isArray(mandatoryEducations) ? mandatoryEducations : []).map((me: any) => ({
+      educationId: me.id,
+      educationName: me.name,
+      category: me.category,
+      targetHours: me.minimumHours,
+      plannedHours: 0,
+      operationMonths: me.monthlyRecommendation || [],
       notes: '',
     })),
     createdAt: new Date().toISOString(),
@@ -1179,6 +1219,186 @@ export default function CurriculumPage() {
           </CardContent>
         </Card>
 
+        {/* 창의적 체험활동 연간 계획 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              창의적 체험활동 연간 계획
+            </CardTitle>
+            <CardDescription>자율/동아리/봉사/진로 4영역의 연간 시수와 활동을 편성합니다.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left py-2 px-3 font-semibold">영역</th>
+                    <th className="text-left py-2 px-3 font-semibold">활동명</th>
+                    <th className="text-center py-2 px-3 font-semibold w-[80px]">시수</th>
+                    <th className="text-left py-2 px-3 font-semibold">운영 시기</th>
+                    <th className="text-left py-2 px-3 font-semibold">비고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(activePlan.creativeActivityPlan || []).map((item, idx) => (
+                    <tr key={idx} className="border-b">
+                      <td className="py-2 px-3 font-medium whitespace-nowrap">
+                        <Badge variant="outline">{item.area}</Badge>
+                      </td>
+                      <td className="py-2 px-3">
+                        <Input
+                          value={item.activityName}
+                          onChange={(e) => {
+                            const updated = [...(activePlan.creativeActivityPlan || [])];
+                            updated[idx] = { ...updated[idx], activityName: e.target.value };
+                            updateActivePlan({ creativeActivityPlan: updated });
+                          }}
+                          placeholder="활동명 입력"
+                          className="h-8 text-sm"
+                        />
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <Input
+                          type="number"
+                          value={item.hours}
+                          onChange={(e) => {
+                            const updated = [...(activePlan.creativeActivityPlan || [])];
+                            updated[idx] = { ...updated[idx], hours: parseInt(e.target.value) || 0 };
+                            updateActivePlan({ creativeActivityPlan: updated });
+                          }}
+                          className="h-8 text-sm text-center w-[60px]"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <div className="flex flex-wrap gap-1">
+                          {MONTHS_SCHOOL_YEAR.map(m => {
+                            const isSelected = item.operationMonths.includes(m);
+                            return (
+                              <div
+                                key={m}
+                                className={cn(
+                                  'w-7 h-7 rounded text-xs flex items-center justify-center cursor-pointer transition-colors',
+                                  isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                )}
+                                onClick={() => {
+                                  const updated = [...(activePlan.creativeActivityPlan || [])];
+                                  const months = isSelected
+                                    ? item.operationMonths.filter(x => x !== m)
+                                    : [...item.operationMonths, m];
+                                  updated[idx] = { ...updated[idx], operationMonths: months };
+                                  updateActivePlan({ creativeActivityPlan: updated });
+                                }}
+                              >
+                                {m}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="py-2 px-3">
+                        <Input
+                          value={item.description}
+                          onChange={(e) => {
+                            const updated = [...(activePlan.creativeActivityPlan || [])];
+                            updated[idx] = { ...updated[idx], description: e.target.value };
+                            updateActivePlan({ creativeActivityPlan: updated });
+                          }}
+                          placeholder="비고"
+                          className="h-8 text-sm"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-muted/50 font-semibold">
+                    <td className="py-2 px-3" colSpan={2}>합계</td>
+                    <td className="py-2 px-3 text-center">
+                      {(activePlan.creativeActivityPlan || []).reduce((s, i) => s + i.hours, 0)}시간
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 법정필수교육 시수 현황 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              법정필수교육 시수 현황
+            </CardTitle>
+            <CardDescription>안전교육 51시간, 성교육 15시간 등 법정 의무교육 시수를 관리합니다.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {['안전교육', '보건교육', '인성교육', '기타필수교육'].map(category => {
+              const items = (activePlan.mandatoryEducationPlan || []).filter(p => p.category === category);
+              if (items.length === 0) return null;
+              const totalTarget = items.reduce((s, i) => s + i.targetHours, 0);
+              const totalPlanned = items.reduce((s, i) => s + i.plannedHours, 0);
+              return (
+                <div key={category} className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      {category}
+                      {category === '안전교육' && <Badge variant="destructive" className="text-[10px]">51시간 필수</Badge>}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <Progress value={totalTarget > 0 ? (totalPlanned / totalTarget) * 100 : 0} className="w-24 h-2" />
+                      <span className={cn('text-xs font-medium', totalPlanned >= totalTarget ? 'text-green-600' : 'text-orange-600')}>
+                        {totalPlanned}/{totalTarget}시간
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {items.map((item) => {
+                      const globalIdx = (activePlan.mandatoryEducationPlan || []).indexOf(item);
+                      const percent = item.targetHours > 0 ? Math.round((item.plannedHours / item.targetHours) * 100) : 0;
+                      return (
+                        <div key={item.educationId} className={cn(
+                          'rounded-lg border p-3 text-sm',
+                          percent >= 100 ? 'border-green-200 bg-green-50/50' : percent > 0 ? 'border-blue-200 bg-blue-50/50' : ''
+                        )}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-xs">{item.educationName}</span>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                value={item.plannedHours}
+                                onChange={(e) => {
+                                  const updated = [...(activePlan.mandatoryEducationPlan || [])];
+                                  updated[globalIdx] = { ...updated[globalIdx], plannedHours: parseInt(e.target.value) || 0 };
+                                  updateActivePlan({ mandatoryEducationPlan: updated });
+                                }}
+                                className="h-6 w-[50px] text-xs text-center"
+                              />
+                              <span className="text-xs text-muted-foreground">/{item.targetHours}h</span>
+                              {percent >= 100 && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                            </div>
+                          </div>
+                          <Progress value={Math.min(percent, 100)} className="h-1.5" />
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {item.operationMonths.map(m => (
+                              <span key={m} className="text-[10px] text-muted-foreground">{m}월</span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {(activePlan.mandatoryEducationPlan || []).length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                법정필수교육 데이터가 아직 로드되지 않았습니다. curriculum-data에 mandatoryEducations를 추가하면 자동으로 표시됩니다.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* 월별 카드 */}
         {MONTHS_SCHOOL_YEAR.map((month) => {
           const plan = activePlan.monthlyPlans.find((m) => m.month === month);
@@ -1564,19 +1784,48 @@ export default function CurriculumPage() {
         lines.push('');
       });
 
-      lines.push(`--- 5. 창의적 체험활동 계획 ---`);
-      creativeActivities
-        .filter((ca) => ca.recommendedGrades.includes(selectedGrade))
-        .forEach((ca) => {
-          lines.push(`  [${ca.area}] ${ca.name}`);
-          lines.push(`    ${ca.description}`);
-          if (ca.examples.length > 0) {
-            lines.push(`    예시: ${ca.examples.slice(0, 3).join(', ')}`);
+      lines.push(`--- 5. 창의적 체험활동 연간 계획 ---`);
+      if ((activePlan.creativeActivityPlan || []).length > 0) {
+        lines.push(`${'영역'.padEnd(16)}${'활동명'.padEnd(20)}${'시수'.padStart(6)}${'  운영시기'}`);
+        (activePlan.creativeActivityPlan || []).forEach((item) => {
+          const monthsStr = item.operationMonths.map(m => `${m}월`).join(',');
+          lines.push(`${item.area.padEnd(16)}${(item.activityName || '-').padEnd(20)}${String(item.hours).padStart(6)}  ${monthsStr}`);
+          if (item.description) {
+            lines.push(`    비고: ${item.description}`);
           }
         });
+        const totalHours = (activePlan.creativeActivityPlan || []).reduce((s, i) => s + i.hours, 0);
+        lines.push(`${'합계'.padEnd(36)}${String(totalHours).padStart(6)}시간`);
+      } else {
+        creativeActivities
+          .filter((ca) => ca.recommendedGrades.includes(selectedGrade))
+          .forEach((ca) => {
+            lines.push(`  [${ca.area}] ${ca.name}`);
+            lines.push(`    ${ca.description}`);
+            if (ca.examples.length > 0) {
+              lines.push(`    예시: ${ca.examples.slice(0, 3).join(', ')}`);
+            }
+          });
+      }
       lines.push('');
 
-      lines.push(`--- 6. 범교과 학습주제 운영 계획 ---`);
+      lines.push(`--- 6. 법정필수교육 시수 현황 ---`);
+      if ((activePlan.mandatoryEducationPlan || []).length > 0) {
+        ['안전교육', '보건교육', '인성교육', '기타필수교육'].forEach(category => {
+          const items = (activePlan.mandatoryEducationPlan || []).filter(p => p.category === category);
+          if (items.length === 0) return;
+          lines.push(`  [${category}]`);
+          items.forEach(item => {
+            const status = item.plannedHours >= item.targetHours ? '(완료)' : `(${item.plannedHours}/${item.targetHours}시간)`;
+            lines.push(`    ${item.educationName}: ${status}`);
+          });
+        });
+      } else {
+        lines.push('  (법정필수교육 데이터 미설정)');
+      }
+      lines.push('');
+
+      lines.push(`--- 7. 범교과 학습주제 운영 계획 ---`);
       crossCurricularThemes.forEach((theme) => {
         const planned = activePlan.monthlyPlans.filter((mp) =>
           mp.crossThemes.includes(theme.id)
@@ -1589,7 +1838,7 @@ export default function CurriculumPage() {
       });
       lines.push('');
 
-      lines.push(`--- 7. 평가 계획 ---`);
+      lines.push(`--- 8. 평가 계획 ---`);
       const methods = assessmentMethods.filter((a) =>
         a.applicableGrades.includes(selectedGrade)
       );
@@ -1946,65 +2195,154 @@ export default function CurriculumPage() {
             </CardContent>
           </Card>
 
-          {/* 6. 창의적 체험활동 계획 */}
+          {/* 6. 창의적 체험활동 연간 계획 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Star className="h-5 w-5" />
-                6. 창의적 체험활동 계획
+                6. 창의적 체험활동 연간 계획
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {['자율활동', '동아리활동', '봉사활동', '진로활동'].map(
-                  (area) => {
-                    const acts = creativeActivities.filter(
-                      (a) => a.area === area && a.recommendedGrades.includes(selectedGrade)
-                    );
-                    if (acts.length === 0) return null;
-                    return (
-                      <div key={area}>
-                        <h4 className="text-sm font-semibold mb-1.5">{area}</h4>
-                        <div className="space-y-1.5 ml-2">
-                          {acts.map((act) => (
-                            <div
-                              key={act.id}
-                              className="p-2 rounded bg-muted/30 text-sm"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium">{act.name}</span>
+              {(activePlan.creativeActivityPlan || []).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="border bg-muted/50 py-2 px-3 text-left">영역</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-left">활동명</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-center">시수</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-left">운영 시기</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-left">비고</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(activePlan.creativeActivityPlan || []).map((item, idx) => (
+                        <tr key={idx} className="border-b">
+                          <td className="border py-2 px-3 font-medium">{item.area}</td>
+                          <td className="border py-2 px-3">{item.activityName || '-'}</td>
+                          <td className="border py-2 px-3 text-center">{item.hours}</td>
+                          <td className="border py-2 px-3 text-xs">
+                            {item.operationMonths.map(m => `${m}월`).join(', ')}
+                          </td>
+                          <td className="border py-2 px-3 text-xs text-muted-foreground">
+                            {item.description || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="bg-muted/50 font-semibold">
+                        <td className="border py-2 px-3" colSpan={2}>합계</td>
+                        <td className="border py-2 px-3 text-center">
+                          {(activePlan.creativeActivityPlan || []).reduce((s, i) => s + i.hours, 0)}시간
+                        </td>
+                        <td className="border py-2 px-3" colSpan={2}></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {['자율활동', '동아리활동', '봉사활동', '진로활동'].map(
+                    (area) => {
+                      const acts = creativeActivities.filter(
+                        (a) => a.area === area && a.recommendedGrades.includes(selectedGrade)
+                      );
+                      if (acts.length === 0) return null;
+                      return (
+                        <div key={area}>
+                          <h4 className="text-sm font-semibold mb-1.5">{area}</h4>
+                          <div className="space-y-1.5 ml-2">
+                            {acts.map((act) => (
+                              <div
+                                key={act.id}
+                                className="p-2 rounded bg-muted/30 text-sm"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium">{act.name}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {act.description}
+                                </p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {act.examples.slice(0, 4).map((a, i) => (
+                                    <Badge
+                                      key={i}
+                                      variant="outline"
+                                      className="text-[10px]"
+                                    >
+                                      {a}
+                                    </Badge>
+                                  ))}
+                                </div>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {act.description}
-                              </p>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {act.examples.slice(0, 4).map((a, i) => (
-                                  <Badge
-                                    key={i}
-                                    variant="outline"
-                                    className="text-[10px]"
-                                  >
-                                    {a}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
-                )}
-              </div>
+                      );
+                    }
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* 7. 범교과 학습주제 운영 계획 */}
+          {/* 7. 법정필수교육 시수 현황 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                7. 법정필수교육 시수 현황
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(activePlan.mandatoryEducationPlan || []).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="border bg-muted/50 py-2 px-3 text-left">분류</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-left">교육명</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-center">기준시수</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-center">편성시수</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-center">달성률</th>
+                        <th className="border bg-muted/50 py-2 px-3 text-left">운영시기</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(activePlan.mandatoryEducationPlan || []).map((item) => {
+                        const percent = item.targetHours > 0 ? Math.round((item.plannedHours / item.targetHours) * 100) : 0;
+                        return (
+                          <tr key={item.educationId} className="border-b">
+                            <td className="border py-2 px-3 text-xs">{item.category}</td>
+                            <td className="border py-2 px-3 font-medium">{item.educationName}</td>
+                            <td className="border py-2 px-3 text-center">{item.targetHours}</td>
+                            <td className="border py-2 px-3 text-center">{item.plannedHours}</td>
+                            <td className={cn('border py-2 px-3 text-center font-medium', percent >= 100 ? 'text-green-600' : 'text-orange-600')}>
+                              {percent}%
+                            </td>
+                            <td className="border py-2 px-3 text-xs">
+                              {item.operationMonths.map(m => `${m}월`).join(', ')}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  법정필수교육 데이터가 아직 설정되지 않았습니다.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 8. 범교과 학습주제 운영 계획 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5" />
-                7. 범교과 학습주제 운영 계획
+                8. 범교과 학습주제 운영 계획
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -2050,12 +2388,12 @@ export default function CurriculumPage() {
             </CardContent>
           </Card>
 
-          {/* 8. 평가 계획 */}
+          {/* 9. 평가 계획 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5" />
-                8. 평가 계획
+                9. 평가 계획
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -2251,6 +2589,38 @@ export default function CurriculumPage() {
       toast.success('주차별 진도표가 초기화되었습니다.');
     };
 
+    const autoFillEvents = () => {
+      if (typeof annualSchoolEvents === 'undefined' || !Array.isArray(annualSchoolEvents)) {
+        toast.error('학교행사 데이터를 불러올 수 없습니다.');
+        return;
+      }
+      const gradeEvents = annualSchoolEvents.filter((ev: any) => ev.grades?.includes(selectedGrade));
+      const schoolWeeksData = (typeof SCHOOL_WEEKS !== 'undefined' && SCHOOL_WEEKS?.monthWeeks) ? SCHOOL_WEEKS.monthWeeks : [];
+      const newProgress = weeklyProgress.map(w => {
+        // 이 주차에 해당하는 월 찾기
+        const monthWeek = schoolWeeksData.find((mw: any) => {
+          return w.week >= mw.startWeek && w.week < mw.startWeek + mw.weeks;
+        });
+        if (!monthWeek) return w;
+
+        const weekInMonth = w.week - monthWeek.startWeek + 1;
+        const matchingEvents = gradeEvents.filter((ev: any) =>
+          ev.month === monthWeek.month && (!ev.week || ev.week === weekInMonth)
+        );
+
+        if (matchingEvents.length > 0) {
+          const eventNames = matchingEvents.map((ev: any) => ev.name).join(', ');
+          return {
+            ...w,
+            events: w.events ? `${w.events}, ${eventNames}` : eventNames,
+          };
+        }
+        return w;
+      });
+      updateActivePlan({ weeklyProgress: newProgress });
+      toast.success('학년 행사가 자동으로 채워졌습니다!');
+    };
+
     // 진행률 계산
     const filledWeeks = weeklyProgress.filter(w => w.subjects.length > 0).length;
     const progressPercent = Math.round((filledWeeks / 34) * 100);
@@ -2268,6 +2638,10 @@ export default function CurriculumPage() {
               >
                 <Sparkles className="h-4 w-4 mr-1" />
                 {isGenerating ? 'AI 편성 중...' : 'AI로 자동 편성'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={autoFillEvents}>
+                <Calendar className="h-4 w-4 mr-1" />
+                학년행사 자동채우기
               </Button>
               <Button variant="outline" size="sm" onClick={clearAllProgress}>
                 <RefreshCw className="h-4 w-4 mr-1" />

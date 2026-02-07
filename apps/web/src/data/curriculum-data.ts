@@ -829,6 +829,12 @@ export const creativeActivities: CreativeActivity[] = [
   { id: 'ca-09', area: '동아리활동', name: '창작활동반', description: '다양한 만들기와 창작 활동을 하는 동아리', examples: ['요리반', '목공반', '뜨개질반', '캘리그라피반', 'UCC제작반'], recommendedGrades: [3,4,5,6] },
   { id: 'ca-10', area: '동아리활동', name: '놀이동아리', description: '전통놀이와 협동놀이를 통해 사회성을 기르는 동아리', examples: ['전통놀이', '보드게임', '협동놀이', '밧줄놀이'], recommendedGrades: [1,2,3,4] },
 
+  // 봉사활동
+  { id: 'ca-v01', area: '봉사활동', name: '교내봉사', description: '학교 내에서 다른 학생이나 학교를 위해 봉사하는 활동', examples: ['1학년 도우미', '급식봉사', '도서관 봉사', '교실 환경정리'], recommendedGrades: [1,2,3,4,5,6] },
+  { id: 'ca-v02', area: '봉사활동', name: '지역사회봉사', description: '학교 밖 지역사회에서 봉사활동에 참여하는 활동', examples: ['경로당 방문', '환경정화활동', '불우이웃돕기', '지역축제 봉사'], recommendedGrades: [3,4,5,6] },
+  { id: 'ca-v03', area: '봉사활동', name: '캠페인활동', description: '공익을 위한 캠페인을 기획하고 실행하는 활동', examples: ['환경보호 캠페인', '교통안전 캠페인', '학교폭력예방 캠페인', '에너지절약 캠페인'], recommendedGrades: [3,4,5,6] },
+  { id: 'ca-v04', area: '봉사활동', name: '자연보호활동', description: '자연환경을 보호하고 가꾸는 봉사활동', examples: ['학교 텃밭 가꾸기', '꽃밭 가꾸기', '동물보호 캠페인', '나무심기'], recommendedGrades: [1,2,3,4,5,6] },
+
   // 진로활동
   { id: 'ca-11', area: '진로활동', name: '진로탐색', description: '다양한 직업세계를 알아보고 자신의 진로를 탐색하는 활동', examples: ['직업체험', '진로검사', '직업인인터뷰', '진로골든벨'], recommendedGrades: [3,4,5,6] },
   { id: 'ca-12', area: '진로활동', name: '자기이해활동', description: '자신의 특성, 흥미, 적성을 이해하는 활동', examples: ['자기소개서작성', '흥미검사', '강점찾기', '성장일기'], recommendedGrades: [1,2,3,4,5,6] },
@@ -901,6 +907,206 @@ export const assessmentMethods: AssessmentMethod[] = [
     applicableGrades: [3,4,5,6],
     examples: ['중간학업성취도평가', '단원평가', '진단평가'],
   },
+];
+
+// ----------------------------------------
+// 7-1. 법정필수교육 (의무교육 시수)
+// ----------------------------------------
+
+export interface MandatoryEducation {
+  id: string;
+  name: string;
+  category: '안전교육' | '보건교육' | '인성교육' | '기타필수교육';
+  minimumHours: number;
+  description: string;
+  relatedSubjects: string[];
+  relatedCreativeAreas: string[];
+  monthlyRecommendation: number[];  // 추천 운영 월
+  details?: string[];
+}
+
+export const mandatoryEducations: MandatoryEducation[] = [
+  // === 안전교육 (총 51시간 이상) ===
+  { id: 'me-01', name: '생활안전교육', category: '안전교육', minimumHours: 12,
+    description: '시설안전, 화재안전, 전기·가스안전, 실험·실습안전',
+    relatedSubjects: ['체육', '과학', '실과'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [3,4,5,6,9,10,11,12],
+    details: ['시설안전점검', '화재예방교육', '소화기사용법', '전기안전', '가스안전'] },
+  { id: 'me-02', name: '교통안전교육', category: '안전교육', minimumHours: 10,
+    description: '보행안전, 자전거안전, 대중교통안전, 통학버스안전',
+    relatedSubjects: ['체육', '사회', '바른생활'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [3,4,9,10],
+    details: ['보행안전수칙', '자전거안전교육', '통학버스안전', '교통표지판알기'] },
+  { id: 'me-03', name: '재난안전교육', category: '안전교육', minimumHours: 6,
+    description: '지진, 화재, 태풍, 홍수 등 재난 대비 교육',
+    relatedSubjects: ['과학', '사회'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [3,5,9,11],
+    details: ['지진대피훈련', '화재대피훈련', '태풍대비', '민방위훈련'] },
+  { id: 'me-04', name: '약물·사이버중독예방교육', category: '안전교육', minimumHours: 10,
+    description: '약물오남용, 흡연·음주예방, 인터넷·스마트폰 중독 예방',
+    relatedSubjects: ['체육', '도덕', '실과'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [4,6,10,12],
+    details: ['약물오남용예방', '흡연예방교육', '음주예방교육', '스마트폰과의존예방', '인터넷중독예방'] },
+  { id: 'me-05', name: '응급처치교육', category: '안전교육', minimumHours: 6,
+    description: '심폐소생술, 기본 응급처치법 교육',
+    relatedSubjects: ['체육', '과학'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [4,10],
+    details: ['심폐소생술(CPR)', '자동심장충격기(AED)사용법', '상처응급처치', '골절응급처치'] },
+  { id: 'me-06', name: '수상안전교육', category: '안전교육', minimumHours: 4,
+    description: '물놀이 안전, 수영 안전, 선박안전 교육',
+    relatedSubjects: ['체육'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [5,6,7],
+    details: ['물놀이안전수칙', '수영안전교육', '선박안전교육'] },
+  { id: 'me-07', name: '직업안전교육', category: '안전교육', minimumHours: 3,
+    description: '직업세계의 안전, 산업안전의 기초',
+    relatedSubjects: ['실과', '사회'], relatedCreativeAreas: ['진로활동'],
+    monthlyRecommendation: [10,11],
+    details: ['직업안전의식', '산업안전기초', '안전한 직업환경'] },
+
+  // === 보건교육 ===
+  { id: 'me-10', name: '성교육/양성평등교육', category: '보건교육', minimumHours: 15,
+    description: '성교육, 양성평등, 성폭력예방, 성인지감수성 교육',
+    relatedSubjects: ['체육', '도덕', '과학'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [3,5,7,9,11],
+    details: ['성교육(학기당 최소 1회)', '양성평등교육', '성폭력예방교육', '성희롱예방교육'] },
+  { id: 'me-11', name: '감염병예방교육', category: '보건교육', minimumHours: 4,
+    description: '감염병 예방 및 대처, 개인위생교육',
+    relatedSubjects: ['체육', '과학', '슬기로운생활'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [3,9],
+    details: ['손씻기교육', '감염병예방수칙', '코로나19대처', '인플루엔자예방'] },
+
+  // === 인성교육 ===
+  { id: 'me-20', name: '학교폭력예방교육', category: '인성교육', minimumHours: 12,
+    description: '학교폭력 예방 및 대처, 어울림프로그램',
+    relatedSubjects: ['도덕', '국어', '사회'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [3,4,5,6,9,10,11,12],
+    details: ['어울림프로그램(학기당 최소 4차시)', '사이버폭력예방', '또래중재프로그램'] },
+  { id: 'me-21', name: '자살예방교육', category: '인성교육', minimumHours: 4,
+    description: '생명존중, 자살예방 게이트키퍼 교육',
+    relatedSubjects: ['도덕', '체육'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [4,9],
+    details: ['생명존중교육', '마음건강교육', '도움요청하기'] },
+
+  // === 기타필수교육 ===
+  { id: 'me-30', name: '장애이해교육', category: '기타필수교육', minimumHours: 4,
+    description: '장애인에 대한 이해와 인식개선 교육',
+    relatedSubjects: ['도덕', '사회', '바른생활'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [4,10],
+    details: ['장애인의 날(4/20) 행사', '장애인식개선교육', '통합교육이해'] },
+  { id: 'me-31', name: '다문화교육', category: '기타필수교육', minimumHours: 4,
+    description: '다문화 이해 및 존중 교육',
+    relatedSubjects: ['사회', '도덕', '영어'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [5,10],
+    details: ['다문화이해교육', '세계문화체험', '다문화감수성교육'] },
+  { id: 'me-32', name: '통일교육', category: '기타필수교육', minimumHours: 4,
+    description: '평화통일 의식 함양 교육',
+    relatedSubjects: ['사회', '도덕'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [6,10],
+    details: ['통일교육주간', '6.25전쟁기념', '북한이해교육'] },
+  { id: 'me-33', name: '독도교육', category: '기타필수교육', minimumHours: 2,
+    description: '독도 관련 역사·지리 교육',
+    relatedSubjects: ['사회', '도덕'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [10],
+    details: ['독도의 날(10/25) 행사', '독도역사교육', '독도바로알기'] },
+  { id: 'me-34', name: '정보통신윤리교육', category: '기타필수교육', minimumHours: 4,
+    description: '정보윤리, 저작권, 개인정보보호 교육',
+    relatedSubjects: ['실과', '도덕', '사회'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [4,9],
+    details: ['저작권교육', '개인정보보호', '디지털시민교육', '사이버예절'] },
+  { id: 'me-35', name: '아동학대예방교육', category: '기타필수교육', minimumHours: 4,
+    description: '아동학대 인식 및 예방, 신고방법 교육',
+    relatedSubjects: ['도덕', '사회', '바른생활'], relatedCreativeAreas: ['자율·자치활동'],
+    monthlyRecommendation: [3,9],
+    details: ['아동학대유형알기', '도움요청방법', '112신고방법'] },
+];
+
+// ----------------------------------------
+// 7-2. 연간 학교행사 (주차별 매핑용)
+// ----------------------------------------
+
+export interface SchoolEvent {
+  id: string;
+  name: string;
+  month: number;
+  week?: number;  // 해당 월의 몇째 주 (1-4)
+  type: '학사' | '행사' | '체험학습' | '평가' | '법정교육' | '방학';
+  grades: number[];  // 해당 학년
+  description?: string;
+}
+
+export const annualSchoolEvents: SchoolEvent[] = [
+  // 3월
+  { id: 'ev-0301', name: '시업식/입학식', month: 3, week: 1, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0302', name: '학급임원선거', month: 3, week: 1, type: '학사', grades: [3,4,5,6] },
+  { id: 'ev-0303', name: '학부모총회', month: 3, week: 2, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0304', name: '학교폭력예방교육(1차)', month: 3, week: 2, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0305', name: '진단평가', month: 3, week: 2, type: '평가', grades: [2,3,4,5,6] },
+  { id: 'ev-0306', name: '안전교육(생활안전)', month: 3, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0307', name: '아동학대예방교육', month: 3, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+
+  // 4월
+  { id: 'ev-0401', name: '과학의 날 행사', month: 4, week: 3, type: '행사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0402', name: '장애인의 날 행사', month: 4, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0403', name: '교통안전교육', month: 4, week: 1, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0404', name: '응급처치교육(CPR)', month: 4, week: 2, type: '법정교육', grades: [3,4,5,6] },
+  { id: 'ev-0405', name: '정보통신윤리교육', month: 4, week: 4, type: '법정교육', grades: [3,4,5,6] },
+  { id: 'ev-0406', name: '현장체험학습(봄)', month: 4, week: 4, type: '체험학습', grades: [1,2,3,4,5,6] },
+
+  // 5월
+  { id: 'ev-0501', name: '어린이날 행사', month: 5, week: 1, type: '행사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0502', name: '어버이날 행사', month: 5, week: 2, type: '행사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0503', name: '재난대피훈련(지진)', month: 5, week: 2, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0504', name: '다문화교육주간', month: 5, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0505', name: '성교육(1차)', month: 5, week: 4, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0506', name: '운동회/체육대회', month: 5, week: 4, type: '행사', grades: [1,2,3,4,5,6] },
+
+  // 6월
+  { id: 'ev-0601', name: '현충일', month: 6, week: 1, type: '학사', grades: [1,2,3,4,5,6], description: '공휴일' },
+  { id: 'ev-0602', name: '6.25전쟁기념/통일교육', month: 6, week: 4, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0603', name: '약물오남용예방교육', month: 6, week: 2, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0604', name: '수상안전교육', month: 6, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0605', name: '환경의 날 행사', month: 6, week: 1, type: '행사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0606', name: '1학기 학업성취도평가', month: 6, week: 4, type: '평가', grades: [3,4,5,6] },
+
+  // 7월
+  { id: 'ev-0701', name: '여름방학식', month: 7, week: 3, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0702', name: '물놀이안전교육', month: 7, week: 1, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0703', name: '학부모상담주간', month: 7, week: 1, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0704', name: '통지표 배부', month: 7, week: 3, type: '학사', grades: [1,2,3,4,5,6] },
+
+  // 9월
+  { id: 'ev-0901', name: '2학기 시업식', month: 9, week: 1, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0902', name: '학교폭력예방교육(2차)', month: 9, week: 2, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0903', name: '추석', month: 9, week: 2, type: '학사', grades: [1,2,3,4,5,6], description: '공휴일' },
+  { id: 'ev-0904', name: '성교육(2차)', month: 9, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0905', name: '감염병예방교육', month: 9, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-0906', name: '재난대피훈련(화재)', month: 9, week: 4, type: '법정교육', grades: [1,2,3,4,5,6] },
+
+  // 10월
+  { id: 'ev-1001', name: '개천절', month: 10, week: 1, type: '학사', grades: [1,2,3,4,5,6], description: '공휴일' },
+  { id: 'ev-1002', name: '한글날', month: 10, week: 2, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1003', name: '현장체험학습(가을)', month: 10, week: 3, type: '체험학습', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1004', name: '독도의 날(10/25)', month: 10, week: 4, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1005', name: '장애이해교육(2차)', month: 10, week: 2, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1006', name: '생명존중교육', month: 10, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1007', name: '학예회/발표회', month: 10, week: 4, type: '행사', grades: [1,2,3,4,5,6] },
+
+  // 11월
+  { id: 'ev-1101', name: '재난대피훈련(복합)', month: 11, week: 2, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1102', name: '학교폭력예방교육(3차)', month: 11, week: 3, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1103', name: '성교육(3차)', month: 11, week: 2, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1104', name: '진로교육주간', month: 11, week: 3, type: '행사', grades: [3,4,5,6] },
+  { id: 'ev-1105', name: '사이버중독예방교육', month: 11, week: 4, type: '법정교육', grades: [3,4,5,6] },
+
+  // 12월
+  { id: 'ev-1201', name: '2학기 학업성취도평가', month: 12, week: 2, type: '평가', grades: [3,4,5,6] },
+  { id: 'ev-1202', name: '학부모상담주간', month: 12, week: 3, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1203', name: '겨울방학식/종업식', month: 12, week: 4, type: '학사', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1204', name: '안전한 겨울방학 교육', month: 12, week: 4, type: '법정교육', grades: [1,2,3,4,5,6] },
+  { id: 'ev-1205', name: '통지표 배부', month: 12, week: 4, type: '학사', grades: [1,2,3,4,5,6] },
+
+  // 1-2월
+  { id: 'ev-0201', name: '졸업식/수료식', month: 2, week: 2, type: '학사', grades: [1,2,3,4,5,6] },
 ];
 
 // ----------------------------------------
