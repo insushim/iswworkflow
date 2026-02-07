@@ -49,6 +49,9 @@ import {
   Star,
   FolderOpen,
   X,
+  Download,
+  Sparkles,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -68,6 +71,7 @@ import {
   type CrossCurricularTheme,
   type WeeklyScheduleTemplate,
 } from '@/data/curriculum-data';
+import { curriculumStandards, type CurriculumStandard } from '@/data/curriculum-standards';
 
 // ============================================
 // 타입 정의
@@ -104,6 +108,19 @@ interface MonthlyPlan {
   status: 'draft' | 'in-progress' | 'complete';
 }
 
+interface WeeklyProgressEntry {
+  week: number;
+  dateRange: string; // "3/4~3/8" 형식
+  subjects: {
+    subjectName: string;
+    unitTitle: string;
+    lessonDetail: string;
+    hours: number;
+  }[];
+  events: string;
+  notes: string;
+}
+
 interface CurriculumPlan {
   id: string;
   name: string;
@@ -119,6 +136,7 @@ interface CurriculumPlan {
   creativeActivities: string[];
   crossThemePlans: string[];
   assessmentPlans: string[];
+  weeklyProgress: WeeklyProgressEntry[];
   createdAt: string;
   updatedAt: string;
 }
@@ -169,6 +187,15 @@ function getPeriodsForGrade(grade: number): number {
   return grade <= 2 ? 5 : 6;
 }
 
+function getRelatedStandards(unit: TextbookUnit): CurriculumStandard[] {
+  const gradeGroup: '1-2' | '3-4' | '5-6' = unit.grade <= 2 ? '1-2' : unit.grade <= 4 ? '3-4' : '5-6';
+  return curriculumStandards.filter(s =>
+    s.subject === unit.subject &&
+    s.gradeGroup === gradeGroup &&
+    unit.keywords.some(k => s.keywords.includes(k) || s.content.includes(k))
+  );
+}
+
 function getUnitsForGrade(grade: number, semester?: 'first' | 'second' | 'full'): TextbookUnit[] {
   return textbookUnits.filter((u) => {
     if (u.grade !== grade) return false;
@@ -212,9 +239,9 @@ function createDefaultPlan(grade: number, semester: 'first' | 'second' | 'full')
         standardWeekly: s.weekly,
         customWeekly: s.weekly,
         annualHours: s.annual,
-        minWeekly: s.weekly, // No min/max in data, use weekly as default
-        maxWeekly: s.weekly,
-        category: '', // Not available in data
+        minWeekly: s.minWeekly,
+        maxWeekly: s.maxWeekly,
+        category: s.category,
       }))
     : [];
 
@@ -237,6 +264,13 @@ function createDefaultPlan(grade: number, semester: 'first' | 'second' | 'full')
     creativeActivities: [],
     crossThemePlans: [],
     assessmentPlans: [],
+    weeklyProgress: Array.from({ length: 34 }, (_, i) => ({
+      week: i + 1,
+      dateRange: '',
+      subjects: [],
+      events: '',
+      notes: '',
+    })),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -526,9 +560,9 @@ export default function CurriculumPage() {
         standardWeekly: s.weekly,
         customWeekly: s.weekly,
         annualHours: s.annual,
-        minWeekly: s.weekly, // No min/max in data, use weekly as default
-        maxWeekly: s.weekly,
-        category: '', // Not available in data
+        minWeekly: s.minWeekly,
+        maxWeekly: s.maxWeekly,
+        category: s.category,
       }));
       updateActivePlan({ hoursAllocation: reset });
       toast.success('기준 시수로 초기화되었습니다.');
@@ -1268,28 +1302,50 @@ export default function CurriculumPage() {
                                 const isSelected = plan.units.some(
                                   (u) => u.unitId === unit.id
                                 );
+                                const relatedStds = getRelatedStandards(unit);
                                 return (
-                                  <div
-                                    key={unit.id}
-                                    className={cn(
-                                      'flex items-center gap-2 ml-4 p-1.5 rounded text-sm cursor-pointer transition-colors',
-                                      isSelected
-                                        ? cn(color.bg, 'ring-1', color.border)
-                                        : 'hover:bg-muted/50'
+                                  <div key={unit.id} className="ml-4">
+                                    <div
+                                      className={cn(
+                                        'flex items-center gap-2 p-1.5 rounded text-sm cursor-pointer transition-colors',
+                                        isSelected
+                                          ? cn(color.bg, 'ring-1', color.border)
+                                          : 'hover:bg-muted/50'
+                                      )}
+                                      onClick={() => toggleUnit(month, unit)}
+                                    >
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleUnit(month, unit)}
+                                        className="h-3.5 w-3.5"
+                                      />
+                                      <span className="text-xs">
+                                        {unit.unitNumber}단원: {unit.title}
+                                      </span>
+                                      <Badge variant="outline" className="text-[10px] ml-auto">
+                                        {unit.hours}차시
+                                      </Badge>
+                                    </div>
+                                    {/* 성취기준 연계 배지 */}
+                                    {relatedStds.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 ml-6 mt-0.5 mb-1">
+                                        {relatedStds.slice(0, 3).map(std => (
+                                          <Badge
+                                            key={std.id}
+                                            variant="outline"
+                                            className="text-[9px] px-1.5 py-0 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-700"
+                                            title={std.content}
+                                          >
+                                            {std.standardCode}
+                                          </Badge>
+                                        ))}
+                                        {relatedStds.length > 3 && (
+                                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                            +{relatedStds.length - 3}
+                                          </Badge>
+                                        )}
+                                      </div>
                                     )}
-                                    onClick={() => toggleUnit(month, unit)}
-                                  >
-                                    <Checkbox
-                                      checked={isSelected}
-                                      onCheckedChange={() => toggleUnit(month, unit)}
-                                      className="h-3.5 w-3.5"
-                                    />
-                                    <span className="text-xs">
-                                      {unit.unitNumber}단원: {unit.title}
-                                    </span>
-                                    <Badge variant="outline" className="text-[10px] ml-auto">
-                                      {unit.hours}차시
-                                    </Badge>
                                   </div>
                                 );
                               })}
@@ -1422,9 +1478,24 @@ export default function CurriculumPage() {
 
     const handlePrint = () => {
       setIsPrintMode(true);
+      // 동적 인쇄 스타일 삽입
+      const style = document.createElement('style');
+      style.id = 'curriculum-print-style';
+      style.textContent = `
+        @media print {
+          body * { visibility: hidden; }
+          .print-content, .print-content * { visibility: visible; }
+          .print-content { position: absolute; left: 0; top: 0; width: 100%; }
+          .print-content > div { break-inside: avoid; page-break-inside: avoid; margin-bottom: 16px; }
+          .print-content table { font-size: 10px !important; }
+          @page { margin: 15mm; size: A4; }
+        }
+      `;
+      document.head.appendChild(style);
       setTimeout(() => {
         window.print();
         setIsPrintMode(false);
+        document.getElementById('curriculum-print-style')?.remove();
       }, 500);
     };
 
@@ -1561,6 +1632,10 @@ export default function CurriculumPage() {
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-1" />
                 인쇄하기
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                <Download className="h-4 w-4 mr-1" />
+                엑셀 내보내기
               </Button>
               <div className="flex-1" />
               <Badge variant="secondary">
@@ -2020,6 +2095,387 @@ export default function CurriculumPage() {
   };
 
   // ============================================
+  // 탭 5: 주차별 진도표
+  // ============================================
+
+  const WeeklyProgressTab = () => {
+    if (!activePlan) return null;
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [editingCell, setEditingCell] = useState<{ week: number; subjectName: string } | null>(null);
+    const [editText, setEditText] = useState('');
+
+    // weeklyProgress가 없으면 초기화
+    const weeklyProgress = activePlan.weeklyProgress || Array.from({ length: 34 }, (_, i) => ({
+      week: i + 1,
+      dateRange: '',
+      subjects: [] as WeeklyProgressEntry['subjects'],
+      events: '',
+      notes: '',
+    }));
+
+    const subjectNames = activePlan.hoursAllocation.map(a => a.subjectName);
+
+    const getSubjectEntry = (week: number, subjectName: string) => {
+      const weekData = weeklyProgress.find(w => w.week === week);
+      return weekData?.subjects.find(s => s.subjectName === subjectName);
+    };
+
+    const updateWeeklyProgressData = (weekNum: number, updates: Partial<WeeklyProgressEntry>) => {
+      const newProgress = weeklyProgress.map(w =>
+        w.week === weekNum ? { ...w, ...updates } : w
+      );
+      updateActivePlan({ weeklyProgress: newProgress });
+    };
+
+    const updateSubjectEntry = (weekNum: number, subjectName: string, unitTitle: string) => {
+      const weekData = weeklyProgress.find(w => w.week === weekNum);
+      if (!weekData) return;
+      const existingIdx = weekData.subjects.findIndex(s => s.subjectName === subjectName);
+      const newSubjects = [...weekData.subjects];
+      if (existingIdx >= 0) {
+        newSubjects[existingIdx] = { ...newSubjects[existingIdx], unitTitle, lessonDetail: unitTitle };
+      } else {
+        newSubjects.push({ subjectName, unitTitle, lessonDetail: unitTitle, hours: 1 });
+      }
+      updateWeeklyProgressData(weekNum, { subjects: newSubjects });
+      setEditingCell(null);
+      setEditText('');
+    };
+
+    const startEdit = (week: number, subjectName: string) => {
+      const entry = getSubjectEntry(week, subjectName);
+      setEditingCell({ week, subjectName });
+      setEditText(entry?.unitTitle || '');
+    };
+
+    const handleEditKeyDown = (e: React.KeyboardEvent, week: number, subjectName: string) => {
+      if (e.key === 'Enter') {
+        updateSubjectEntry(week, subjectName, editText);
+      } else if (e.key === 'Escape') {
+        setEditingCell(null);
+        setEditText('');
+      }
+    };
+
+    // 교과별 셀 배경색 매핑 (연한 버전)
+    const subjectBgColors: Record<string, string> = {
+      '국어': 'bg-red-50 dark:bg-red-950/20',
+      '수학': 'bg-blue-50 dark:bg-blue-950/20',
+      '사회': 'bg-yellow-50 dark:bg-yellow-950/20',
+      '과학': 'bg-green-50 dark:bg-green-950/20',
+      '영어': 'bg-purple-50 dark:bg-purple-950/20',
+      '도덕': 'bg-orange-50 dark:bg-orange-950/20',
+      '체육': 'bg-cyan-50 dark:bg-cyan-950/20',
+      '음악': 'bg-pink-50 dark:bg-pink-950/20',
+      '미술': 'bg-indigo-50 dark:bg-indigo-950/20',
+      '실과': 'bg-teal-50 dark:bg-teal-950/20',
+      '바른생활': 'bg-orange-50 dark:bg-orange-950/20',
+      '슬기로운생활': 'bg-green-50 dark:bg-green-950/20',
+      '즐거운생활': 'bg-pink-50 dark:bg-pink-950/20',
+      '창의적체험활동': 'bg-gray-50 dark:bg-gray-950/20',
+    };
+
+    const autoGenerateWithAI = async () => {
+      setIsGenerating(true);
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{
+              role: 'user',
+              content: `${activePlan.grade}학년 ${activePlan.semester === 'first' ? '1학기' : activePlan.semester === 'second' ? '2학기' : '연간'} 주차별 교육과정 진도표를 만들어주세요.
+교과: ${activePlan.hoursAllocation.map(a => `${a.subjectName}(주${a.customWeekly}시간)`).join(', ')}
+총 34주. 각 주차별로 교과서 단원명과 차시를 배정해주세요.
+반드시 아래 JSON 형식으로만 응답하세요(다른 텍스트 없이):
+[{"week":1,"dateRange":"3/4~3/8","subjects":[{"subjectName":"국어","unitTitle":"1단원: ...","lessonDetail":"1-2차시","hours":6}],"events":"시업식","notes":""},...]`
+            }],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('AI 응답 실패');
+        }
+
+        const data = await response.json();
+        const aiText = data.response || data.message || data.content || '';
+
+        // JSON 파싱 시도
+        const jsonMatch = aiText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[0]) as WeeklyProgressEntry[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const newProgress = weeklyProgress.map(w => {
+                const aiWeek = parsed.find(p => p.week === w.week);
+                if (aiWeek) {
+                  return {
+                    ...w,
+                    dateRange: aiWeek.dateRange || w.dateRange,
+                    subjects: aiWeek.subjects || w.subjects,
+                    events: aiWeek.events || w.events,
+                    notes: aiWeek.notes || w.notes,
+                  };
+                }
+                return w;
+              });
+              updateActivePlan({ weeklyProgress: newProgress });
+              toast.success('AI가 34주 진도표를 자동 편성했습니다!');
+            } else {
+              toast.error('AI 응답 파싱 실패: 유효한 배열이 아닙니다.');
+            }
+          } catch {
+            toast.error('AI 응답의 JSON 파싱에 실패했습니다. 다시 시도해주세요.');
+          }
+        } else {
+          toast.error('AI 응답에서 JSON을 찾을 수 없습니다. 다시 시도해주세요.');
+        }
+      } catch {
+        toast.error('AI 자동 편성 중 오류가 발생했습니다.');
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    const clearAllProgress = () => {
+      if (!confirm('주차별 진도표를 모두 초기화하시겠습니까?')) return;
+      updateActivePlan({
+        weeklyProgress: Array.from({ length: 34 }, (_, i) => ({
+          week: i + 1,
+          dateRange: '',
+          subjects: [],
+          events: '',
+          notes: '',
+        })),
+      });
+      toast.success('주차별 진도표가 초기화되었습니다.');
+    };
+
+    // 진행률 계산
+    const filledWeeks = weeklyProgress.filter(w => w.subjects.length > 0).length;
+    const progressPercent = Math.round((filledWeeks / 34) * 100);
+
+    return (
+      <div className="space-y-6">
+        {/* 도구 바 */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={autoGenerateWithAI}
+                disabled={isGenerating}
+                className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                {isGenerating ? 'AI 편성 중...' : 'AI로 자동 편성'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearAllProgress}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                전체 초기화
+              </Button>
+              <div className="flex-1" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">편성 진행률</span>
+                <Progress value={progressPercent} className="w-24 h-2" />
+                <Badge variant={progressPercent >= 80 ? 'default' : 'secondary'} className="text-xs">
+                  {filledWeeks}/34주 ({progressPercent}%)
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 진도표 그리드 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5" />
+              {selectedGrade}학년 주차별 진도표 (34주)
+            </CardTitle>
+            <CardDescription>
+              각 셀을 클릭하여 해당 주차의 교과별 단원/차시를 입력하세요. 교과별 색상이 자동 적용됩니다.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="w-full">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse min-w-[900px]">
+                  <thead>
+                    <tr>
+                      <th className="border bg-muted/50 py-2 px-2 text-center font-semibold w-[40px] sticky left-0 z-10 bg-background">주</th>
+                      <th className="border bg-muted/50 py-2 px-2 text-center font-semibold w-[80px]">날짜</th>
+                      {subjectNames.map(name => {
+                        const color = getSubjectColor(name);
+                        return (
+                          <th key={name} className={cn('border py-2 px-2 text-center font-semibold min-w-[100px]', color.bg)}>
+                            <span className={color.text}>{name}</span>
+                          </th>
+                        );
+                      })}
+                      <th className="border bg-muted/50 py-2 px-2 text-center font-semibold min-w-[80px]">행사</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeklyProgress.map((weekData) => (
+                      <tr key={weekData.week} className="hover:bg-muted/20 transition-colors">
+                        <td className="border bg-muted/30 py-1.5 px-2 text-center font-bold sticky left-0 z-10 bg-background">
+                          {weekData.week}
+                        </td>
+                        <td className="border py-1 px-1">
+                          <Input
+                            value={weekData.dateRange}
+                            onChange={(e) => updateWeeklyProgressData(weekData.week, { dateRange: e.target.value })}
+                            placeholder={`${Math.floor((weekData.week - 1) / 4) + 3}/${((weekData.week - 1) % 4) * 7 + 4}~`}
+                            className="h-7 text-[11px] border-0 bg-transparent shadow-none px-1 focus-visible:ring-0"
+                          />
+                        </td>
+                        {subjectNames.map(subjectName => {
+                          const entry = getSubjectEntry(weekData.week, subjectName);
+                          const isEditing = editingCell?.week === weekData.week && editingCell?.subjectName === subjectName;
+                          const bgColor = subjectBgColors[subjectName] || '';
+
+                          return (
+                            <td
+                              key={subjectName}
+                              className={cn('border py-1 px-1 cursor-pointer transition-colors', bgColor, entry?.unitTitle && 'font-medium')}
+                              onClick={() => !isEditing && startEdit(weekData.week, subjectName)}
+                            >
+                              {isEditing ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <Input
+                                    value={editText}
+                                    onChange={(e) => setEditText(e.target.value)}
+                                    onKeyDown={(e) => handleEditKeyDown(e, weekData.week, subjectName)}
+                                    onBlur={() => updateSubjectEntry(weekData.week, subjectName, editText)}
+                                    autoFocus
+                                    placeholder="단원/차시"
+                                    className="h-7 text-[11px] border-0 bg-white/80 dark:bg-gray-900/80 shadow-sm px-1 focus-visible:ring-1"
+                                  />
+                                  {/* 교과서 단원 드롭다운 */}
+                                  <div className="max-h-[120px] overflow-y-auto bg-white dark:bg-gray-900 border rounded shadow-sm">
+                                    {gradeUnits
+                                      .filter(u => u.subject === subjectName)
+                                      .map(u => (
+                                        <div
+                                          key={u.id}
+                                          className="px-2 py-1 text-[10px] hover:bg-muted cursor-pointer"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            updateSubjectEntry(weekData.week, subjectName, `${u.unitNumber}단원: ${u.title}`);
+                                          }}
+                                        >
+                                          {u.unitNumber}단원: {u.title} ({u.hours}차시)
+                                        </div>
+                                      ))
+                                    }
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="min-h-[24px] text-[11px] px-1 py-0.5">
+                                  {entry?.unitTitle || <span className="text-muted-foreground/40">-</span>}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="border py-1 px-1">
+                          <Input
+                            value={weekData.events}
+                            onChange={(e) => updateWeeklyProgressData(weekData.week, { events: e.target.value })}
+                            placeholder=""
+                            className="h-7 text-[11px] border-0 bg-transparent shadow-none px-1 focus-visible:ring-0"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* 범례 */}
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground mr-2">교과 색상:</span>
+              {subjectNames.map(name => {
+                const color = getSubjectColor(name);
+                return (
+                  <div key={name} className="flex items-center gap-1">
+                    <div className={cn('w-3 h-3 rounded', color.bg)} />
+                    <span className="text-[11px]">{name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  // ============================================
+  // CSV 엑셀 내보내기
+  // ============================================
+
+  const exportToExcel = () => {
+    if (!activePlan) return;
+    const BOM = '\uFEFF';
+    let csv = BOM;
+
+    // 시수배당표
+    csv += '=== 시수 배당표 ===\n';
+    csv += '교과,기준시수(주),편성시수(주),연간시수\n';
+    activePlan.hoursAllocation.forEach(a => {
+      csv += `${a.subjectName},${a.standardWeekly},${a.customWeekly},${a.customWeekly * 34}\n`;
+    });
+    const totalW = activePlan.hoursAllocation.reduce((s, a) => s + a.customWeekly, 0);
+    csv += `합계,,${totalW},${totalW * 34}\n`;
+    csv += '\n';
+
+    // 주간 시간표
+    csv += '=== 주간 시간표 ===\n';
+    csv += `교시,${DAYS.join(',')}\n`;
+    const pCount = getPeriodsForGrade(selectedGrade);
+    for (let i = 0; i < pCount; i++) {
+      const row = DAYS.map(day => {
+        const cell = activePlan.weeklyTimetable[day]?.[i];
+        return cell?.subject || '';
+      });
+      csv += `${i + 1}교시,${row.join(',')}\n`;
+    }
+    csv += '\n';
+
+    // 주차별 진도표
+    const wp = activePlan.weeklyProgress || [];
+    if (wp.length > 0) {
+      csv += '=== 주차별 진도표 ===\n';
+      const sNames = activePlan.hoursAllocation.map(a => a.subjectName);
+      csv += `주차,날짜,${sNames.join(',')},행사\n`;
+      wp.forEach(w => {
+        const subjectCells = sNames.map(name => {
+          const entry = w.subjects.find(s => s.subjectName === name);
+          return (entry?.unitTitle || '').replace(/,/g, ' ');
+        });
+        csv += `${w.week},${w.dateRange || ''},${subjectCells.join(',')},${(w.events || '').replace(/,/g, ' ')}\n`;
+      });
+      csv += '\n';
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${activePlan.year}학년도_${activePlan.grade}학년_교육과정.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('엑셀(CSV) 파일이 다운로드되었습니다.');
+  };
+
+  // ============================================
   // 메인 렌더
   // ============================================
 
@@ -2034,7 +2490,7 @@ export default function CurriculumPage() {
               학년/학급 교육과정 편성
             </h1>
             <p className="text-muted-foreground mt-1">
-              시수 배당, 주간 시간표, 교육과정 편성, 학급 교육과정 문서를 한 곳에서 관리합니다.
+              시수 배당, 주간 시간표, 교육과정 편성, 학급 교육과정 문서, 주차별 진도표를 한 곳에서 관리합니다.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -2161,7 +2617,7 @@ export default function CurriculumPage() {
       {/* 메인 탭 */}
       {activePlan && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-4 w-full mb-6">
+          <TabsList className="grid grid-cols-5 w-full mb-6">
             <TabsTrigger value="hours" className="text-xs sm:text-sm">
               <Clock className="h-4 w-4 mr-1 hidden sm:inline" />
               시수 배당표
@@ -2178,6 +2634,10 @@ export default function CurriculumPage() {
               <FileText className="h-4 w-4 mr-1 hidden sm:inline" />
               학급 교육과정
             </TabsTrigger>
+            <TabsTrigger value="weekly-progress" className="text-xs sm:text-sm">
+              <ListChecks className="h-4 w-4 mr-1 hidden sm:inline" />
+              주차별 진도표
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="hours">
@@ -2191,6 +2651,9 @@ export default function CurriculumPage() {
           </TabsContent>
           <TabsContent value="document">
             <ClassCurriculumDocTab />
+          </TabsContent>
+          <TabsContent value="weekly-progress">
+            <WeeklyProgressTab />
           </TabsContent>
         </Tabs>
       )}
@@ -2374,6 +2837,9 @@ export default function CurriculumPage() {
                 2022 개정 교육과정 기준으로 학년별 시수 배당 기준이 자동 적용됩니다.
                 시수 배당표에서 주당 시수를 조정하고, 주간 시간표를 편성한 후,
                 월별 교육과정 편성을 완료하면 학급 교육과정 문서가 자동으로 생성됩니다.
+                주차별 진도표 탭에서 AI 자동 편성으로 34주 진도표를 한 번에 생성하거나,
+                엑셀(CSV) 내보내기로 교육과정 전체를 파일로 저장할 수 있습니다.
+                단원 선택 시 2022 개정 교육과정 성취기준이 자동으로 연계됩니다.
                 모든 데이터는 브라우저에 자동 저장됩니다.
               </p>
             </div>

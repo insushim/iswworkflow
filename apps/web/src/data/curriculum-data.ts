@@ -12,6 +12,9 @@ export interface SubjectHours {
   subject: string;
   weekly: number;
   annual: number;
+  minWeekly: number;
+  maxWeekly: number;
+  category: '교과' | '창의적체험활동';
 }
 
 export interface GradeHours {
@@ -89,88 +92,110 @@ export const gradeHoursData: GradeHours[] = [
   {
     grade: 1, curriculum: '2015개정', weeks: 34, totalWeekly: 22, totalAnnual: 748,
     subjects: [
-      { subject: '국어', weekly: 8, annual: 272 },
-      { subject: '수학', weekly: 4, annual: 136 },
-      { subject: '바른생활', weekly: 2, annual: 68 },
-      { subject: '슬기로운생활', weekly: 2, annual: 68 },
-      { subject: '즐거운생활', weekly: 4, annual: 136 },
-      { subject: '창의적체험활동', weekly: 2, annual: 68 },
+      { subject: '국어', weekly: 8, annual: 272, minWeekly: 6, maxWeekly: 10, category: '교과' },
+      { subject: '수학', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '바른생활', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '슬기로운생활', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '즐거운생활', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '창의적체험활동', weekly: 2, annual: 68, minWeekly: 2, maxWeekly: 3, category: '창의적체험활동' },
     ],
   },
   {
     grade: 2, curriculum: '2015개정', weeks: 34, totalWeekly: 23, totalAnnual: 782,
     subjects: [
-      { subject: '국어', weekly: 8, annual: 272 },
-      { subject: '수학', weekly: 4, annual: 136 },
-      { subject: '바른생활', weekly: 2, annual: 68 },
-      { subject: '슬기로운생활', weekly: 2, annual: 68 },
-      { subject: '즐거운생활', weekly: 4, annual: 136 },
-      { subject: '창의적체험활동', weekly: 3, annual: 102 },
+      { subject: '국어', weekly: 8, annual: 272, minWeekly: 6, maxWeekly: 10, category: '교과' },
+      { subject: '수학', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '바른생활', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '슬기로운생활', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '즐거운생활', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '창의적체험활동', weekly: 3, annual: 102, minWeekly: 3, maxWeekly: 4, category: '창의적체험활동' },
     ],
   },
   {
     grade: 3, curriculum: '2015개정', weeks: 34, totalWeekly: 30, totalAnnual: 1020,
     subjects: [
-      { subject: '국어', weekly: 6, annual: 204 },
-      { subject: '수학', weekly: 4, annual: 136 },
-      { subject: '사회', weekly: 3, annual: 102 },
-      { subject: '과학', weekly: 3, annual: 102 },
-      { subject: '영어', weekly: 2, annual: 68 },
-      { subject: '도덕', weekly: 2, annual: 68 },
-      { subject: '음악', weekly: 2, annual: 68 },
-      { subject: '미술', weekly: 2, annual: 68 },
-      { subject: '체육', weekly: 3, annual: 102 },
-      { subject: '창의적체험활동', weekly: 3, annual: 102 },
+      { subject: '국어', weekly: 6, annual: 204, minWeekly: 4, maxWeekly: 8, category: '교과' },
+      { subject: '수학', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '사회', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '과학', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '영어', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '도덕', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '음악', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '미술', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '체육', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '창의적체험활동', weekly: 3, annual: 102, minWeekly: 3, maxWeekly: 4, category: '창의적체험활동' },
     ],
   },
   {
     grade: 4, curriculum: '2015개정', weeks: 34, totalWeekly: 30, totalAnnual: 1020,
     subjects: [
-      { subject: '국어', weekly: 6, annual: 204 },
-      { subject: '수학', weekly: 4, annual: 136 },
-      { subject: '사회', weekly: 3, annual: 102 },
-      { subject: '과학', weekly: 3, annual: 102 },
-      { subject: '영어', weekly: 2, annual: 68 },
-      { subject: '도덕', weekly: 2, annual: 68 },
-      { subject: '음악', weekly: 2, annual: 68 },
-      { subject: '미술', weekly: 2, annual: 68 },
-      { subject: '체육', weekly: 3, annual: 102 },
-      { subject: '창의적체험활동', weekly: 3, annual: 102 },
+      { subject: '국어', weekly: 6, annual: 204, minWeekly: 4, maxWeekly: 8, category: '교과' },
+      { subject: '수학', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '사회', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '과학', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '영어', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '도덕', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '음악', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '미술', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '체육', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '창의적체험활동', weekly: 3, annual: 102, minWeekly: 3, maxWeekly: 4, category: '창의적체험활동' },
     ],
   },
   {
     grade: 5, curriculum: '2015개정', weeks: 34, totalWeekly: 33, totalAnnual: 1122,
     subjects: [
-      { subject: '국어', weekly: 6, annual: 204 },
-      { subject: '수학', weekly: 4, annual: 136 },
-      { subject: '사회', weekly: 3, annual: 102 },
-      { subject: '과학', weekly: 3, annual: 102 },
-      { subject: '영어', weekly: 3, annual: 102 },
-      { subject: '도덕', weekly: 2, annual: 68 },
-      { subject: '음악', weekly: 2, annual: 68 },
-      { subject: '미술', weekly: 2, annual: 68 },
-      { subject: '체육', weekly: 3, annual: 102 },
-      { subject: '실과', weekly: 2, annual: 68 },
-      { subject: '창의적체험활동', weekly: 3, annual: 102 },
+      { subject: '국어', weekly: 6, annual: 204, minWeekly: 4, maxWeekly: 8, category: '교과' },
+      { subject: '수학', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '사회', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '과학', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '영어', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '도덕', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '음악', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '미술', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '체육', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '실과', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '창의적체험활동', weekly: 3, annual: 102, minWeekly: 3, maxWeekly: 4, category: '창의적체험활동' },
     ],
   },
   {
     grade: 6, curriculum: '2015개정', weeks: 34, totalWeekly: 33, totalAnnual: 1122,
     subjects: [
-      { subject: '국어', weekly: 6, annual: 204 },
-      { subject: '수학', weekly: 4, annual: 136 },
-      { subject: '사회', weekly: 3, annual: 102 },
-      { subject: '과학', weekly: 3, annual: 102 },
-      { subject: '영어', weekly: 3, annual: 102 },
-      { subject: '도덕', weekly: 2, annual: 68 },
-      { subject: '음악', weekly: 2, annual: 68 },
-      { subject: '미술', weekly: 2, annual: 68 },
-      { subject: '체육', weekly: 3, annual: 102 },
-      { subject: '실과', weekly: 2, annual: 68 },
-      { subject: '창의적체험활동', weekly: 3, annual: 102 },
+      { subject: '국어', weekly: 6, annual: 204, minWeekly: 4, maxWeekly: 8, category: '교과' },
+      { subject: '수학', weekly: 4, annual: 136, minWeekly: 3, maxWeekly: 5, category: '교과' },
+      { subject: '사회', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '과학', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '영어', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '도덕', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '음악', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '미술', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '체육', weekly: 3, annual: 102, minWeekly: 2, maxWeekly: 4, category: '교과' },
+      { subject: '실과', weekly: 2, annual: 68, minWeekly: 1, maxWeekly: 3, category: '교과' },
+      { subject: '창의적체험활동', weekly: 3, annual: 102, minWeekly: 3, maxWeekly: 4, category: '창의적체험활동' },
     ],
   },
 ];
+
+// ----------------------------------------
+// 2-1. 학사일정 주차 데이터
+// ----------------------------------------
+
+export const SCHOOL_WEEKS = {
+  firstSemester: { start: 3, end: 7, weeks: 17 },  // 3월~7월 17주
+  secondSemester: { start: 9, end: 12, weeks: 17 }, // 9월~12월+1~2월 17주
+  total: 34,
+  monthWeeks: [
+    { month: 3, weeks: 4, startWeek: 1 },
+    { month: 4, weeks: 4, startWeek: 5 },
+    { month: 5, weeks: 4, startWeek: 9 },
+    { month: 6, weeks: 4, startWeek: 13 },
+    { month: 7, weeks: 1, startWeek: 17 },
+    { month: 9, weeks: 4, startWeek: 18 },
+    { month: 10, weeks: 4, startWeek: 22 },
+    { month: 11, weeks: 4, startWeek: 26 },
+    { month: 12, weeks: 4, startWeek: 30 },
+    { month: 1, weeks: 1, startWeek: 34 },
+  ],
+};
 
 // ----------------------------------------
 // 3. 교과서 단원 데이터 (실제 교과서 기반)
