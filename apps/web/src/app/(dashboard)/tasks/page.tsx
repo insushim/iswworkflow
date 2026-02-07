@@ -43,6 +43,7 @@ import {
   Download,
 } from 'lucide-react';
 import { getTasksForDuties, getTasksForMonth, type BasicTask } from '@/data/homeroom-teacher-basic-tasks';
+import { useUserSettings } from '@/hooks/useFirestore';
 
 // 로컬 Task 타입
 interface LocalTask {
@@ -75,10 +76,10 @@ const categories = ['전체', '학급경영', '학부모', '체험학습', '안�
 
 // localStorage 키
 const TASKS_STORAGE_KEY = 'eduflow_tasks';
-const USER_DUTIES_STORAGE_KEY = 'eduflow_user_duties';
 const GENERATED_TASKS_KEY = 'eduflow_generated_tasks_version';
 
 export default function TasksPage() {
+  const { settings: userSettings, loading: settingsLoading } = useUserSettings();
   const [tasks, setTasks] = useState<LocalTask[]>([]);
   const [userDuties, setUserDuties] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,28 +103,17 @@ export default function TasksPage() {
 
   // 사용자 설정에서 업무 가져오기 (Firebase에서 저장된 설정)
   useEffect(() => {
-    const loadUserDuties = () => {
-      try {
-        // Firebase userSettings에서 저장된 roles, customTasks 가져오기
-        // 여기서는 community-storage를 통해 간접적으로 가져옴
-        const communityStorage = localStorage.getItem('community-storage');
-        if (communityStorage) {
-          const parsed = JSON.parse(communityStorage);
-          // myResources에서 사용자 정보 확인
-        }
-
-        // 직접 저장된 duties 확인
-        const savedDuties = localStorage.getItem(USER_DUTIES_STORAGE_KEY);
-        if (savedDuties) {
-          setUserDuties(JSON.parse(savedDuties));
-        }
-      } catch (e) {
-        console.error('[Tasks] 사용자 업무 로드 실패:', e);
+    if (userSettings) {
+      const roles = userSettings.roles || [];
+      const customTasks = (userSettings as any).customTasks || [];
+      const allDuties = [...roles, ...customTasks];
+      if (allDuties.length > 0) {
+        setUserDuties(allDuties);
+        // Also sync to localStorage for backward compatibility
+        localStorage.setItem('eduflow_user_duties', JSON.stringify(allDuties));
       }
-    };
-
-    loadUserDuties();
-  }, []);
+    }
+  }, [userSettings]);
 
   // localStorage에서 tasks 로드
   useEffect(() => {
@@ -140,8 +130,11 @@ export default function TasksPage() {
       }
     };
 
-    loadTasks();
-  }, []);
+    // Wait for settings to load before loading tasks
+    if (!settingsLoading) {
+      loadTasks();
+    }
+  }, [settingsLoading]);
 
   // tasks 저장
   const saveTasks = useCallback((newTasks: LocalTask[]) => {
@@ -370,7 +363,7 @@ export default function TasksPage() {
     return '';
   };
 
-  if (loading) {
+  if (loading || settingsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">

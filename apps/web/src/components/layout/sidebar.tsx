@@ -7,7 +7,6 @@ import {
   Home,
   CheckSquare,
   FileText,
-  Calendar,
   Settings,
   BookOpen,
   Search,
@@ -21,6 +20,7 @@ import {
   GraduationCap,
   ClipboardList,
   BookMarked,
+  Table2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, memo, useCallback, useEffect, useTransition } from 'react';
@@ -44,6 +44,7 @@ const navigation = [
     title: '업무 관리',
     items: [
       { name: '업무 목록', href: '/tasks', icon: CheckSquare },
+      { name: '정보 취합', href: '/data-collection', icon: Table2 },
       { name: '워크플로우', href: '/workflows', icon: FolderKanban },
       { name: '문서 작성', href: '/documents', icon: FileText },
       { name: '생활기록부', href: '/school-record', icon: GraduationCap },
@@ -52,7 +53,6 @@ const navigation = [
   {
     title: '일정 관리',
     items: [
-      { name: '캘린더', href: '/calendar', icon: Calendar },
       { name: '학사일정', href: '/academic-calendar', icon: BookOpen },
       { name: '월별 업무', href: '/monthly-tasks', icon: ClipboardList },
       { name: '알림 설정', href: '/reminders', icon: Bell },
