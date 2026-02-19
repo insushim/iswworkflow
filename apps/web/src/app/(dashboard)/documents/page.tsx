@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +40,14 @@ import {
   Loader2,
   FileEdit,
   Copy,
+  CalendarCheck,
+  MessageSquare,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ENHANCED_TEACHER_DB, getEnhancedMonthlyTasks } from '@/data/teacher-enhanced-db';
 
 // 문서 타입 정의
 interface Document {
@@ -769,7 +776,874 @@ OO초등학교장 귀하
 
 OO초등학교장`,
   },
+  // === 추가 템플릿: K-에듀파인 관련 ===
+  {
+    id: 'tpl-11',
+    title: '예산 지출결의서 (K-에듀파인)',
+    type: '공문',
+    content: `지출결의서
+
+※ K-에듀파인 학교회계 > 지출 > 지출결의등록에 입력 후 출력
+
+결의 일자: 2026년   월   일
+
+1. 지출 개요
+- 사업명:
+- 세출과목: 정책사업-단위사업-세부사업-목
+  예) 학교운영비-교육활동비-교과활동-일반수용비
+- 금액: 금                원 (₩           )
+- 지출 사유:
+
+2. 거래처 정보
+- 업체명:
+- 사업자등록번호:
+- 대표자:
+- 계좌번호:
+
+3. 증빙 서류
+□ 세금계산서 (전자/종이)
+□ 카드매출전표 (학교회계카드)
+□ 견적서
+□ 납품확인서 / 검수확인서
+□ 계약서 (해당 시)
+□ 기타 (              )
+
+4. 품의 이력
+- 품의 번호:
+- 품의 일자:
+- 품의 금액:
+
+5. 결재
+
+기안자:        부장:        교감:        교장:
+
+※ 100만원 이상: 2인 이상 견적 비교 필수
+※ 200만원 이상: 수의계약 사유서 첨부
+※ 2,000만원 이상: 나라장터 입찰 진행
+
+OO초등학교`,
+  },
+  {
+    id: 'tpl-12',
+    title: '물품 구입 요청서',
+    type: '신청서',
+    content: `물품 구입 요청서
+
+※ K-에듀파인 물품관리 > 물품구입요청 연계
+
+요청 일자: 2026년   월   일
+요청 부서:          요청자:
+
+1. 구입 요청 물품
+
+┌────────┬────────┬────┬────────┬────────┬──────┐
+│  품  명  │  규  격  │수량│  단 가  │  금 액  │ 비고 │
+├────────┼────────┼────┼────────┼────────┼──────┤
+│          │          │    │          │          │      │
+├────────┼────────┼────┼────────┼────────┼──────┤
+│          │          │    │          │          │      │
+├────────┼────────┼────┼────────┼────────┼──────┤
+│          │          │    │          │          │      │
+├────────┼────────┼────┼────────┼────────┼──────┤
+│  합  계  │          │    │          │          │      │
+└────────┴────────┴────┴────────┴────────┴──────┘
+
+2. 구입 사유:
+
+
+3. 예산 과목
+- 세출과목:
+- 잔액:           원
+
+4. 납품 희망일: 2026년   월   일
+
+5. 구입 방법
+□ 학교장터(나라장터 쇼핑몰)
+□ 수의계약 (사유:                )
+□ 학교회계카드 구매
+□ 기타 (                        )
+
+6. 비고
+- 물품 인수 후 K-에듀파인 물품등록 필수 (비품: 1건당 10만원 이상)
+- 검수확인서 작성 필요
+
+결재
+
+요청자:        부장:        행정실장:        교감:
+
+OO초등학교`,
+  },
+  // === 학교운영위원회 회의록 ===
+  {
+    id: 'tpl-13',
+    title: '학교운영위원회 회의록',
+    type: '회의록',
+    content: `2026학년도 제O차 학교운영위원회 회의록
+
+OO초등학교
+
+1. 회의 개요
+- 회의일시: 2026년   월   일(  )   시   분 ~   시   분
+- 회의장소: 본교 학교운영위원회 회의실
+- 위 원 장: OOO
+- 참석위원: O명 / O명 (재적위원의 과반수 이상 참석으로 성립)
+  참석: OOO, OOO, OOO, OOO, OOO
+  불참: OOO (사유:         )
+- 간  사: OOO (교무부장 / 행정실장)
+
+2. 전차 회의록 확인
+- 제O차 회의 결정사항 이행 현황 보고
+- 이의 없이 승인
+
+3. 안건 심의
+
+【제1호 안건】 2026학년도 OOO 계획(안) 심의의 건
+가. 제안 설명 (설명자: OOO)
+  - 추진 배경:
+  - 주요 내용:
+  - 예상 예산:
+
+나. 질의 응답
+  - OOO 위원: (질의 내용)
+  → OOO: (답변 내용)
+
+  - OOO 위원: (질의 내용)
+  → OOO: (답변 내용)
+
+다. 심의 결과
+  □ 원안 의결    □ 수정 의결    □ 부결    □ 보류
+  - 찬성: O명, 반대: O명, 기권: O명
+  - 수정 사항 (해당 시):
+
+【제2호 안건】 수익자부담경비 징수(안) 심의의 건
+가. 제안 설명 (설명자: OOO)
+  - 징수 항목:
+  - 1인당 금액:
+  - 징수 대상:
+  - 징수 시기:
+
+나. 질의 응답
+  - OOO 위원:
+  → OOO:
+
+다. 심의 결과
+  □ 원안 의결    □ 수정 의결    □ 부결    □ 보류
+  - 찬성: O명, 반대: O명, 기권: O명
+
+【제3호 안건】 학교회계 예산(안) / 결산(안) 심의의 건
+가. 제안 설명 (설명자: 행정실장 OOO)
+  - 세입 총액:               원
+  - 세출 총액:               원
+  - 주요 편성 내용:
+
+나. 심의 결과
+  □ 원안 의결    □ 수정 의결
+  - 찬성: O명, 반대: O명, 기권: O명
+
+4. 기타 토의 사항
+-
+-
+
+5. 차기 회의 일정
+- 일시: 2026년   월   일(  )   시
+- 예정 안건:
+
+6. 폐회 선언
+- 폐회 시각:   시   분
+
+위 회의록이 틀림없음을 확인합니다.
+
+2026년   월   일
+
+위원장:           (서명)
+간  사:           (서명)
+
+OO초등학교 학교운영위원회`,
+  },
+  // === 현장체험학습 계획서 ===
+  {
+    id: 'tpl-14',
+    title: '현장체험학습 계획서',
+    type: '계획서',
+    content: `2026학년도 현장체험학습 계획서
+
+OO초등학교
+
+1. 목적
+- 교과 학습과 연계한 체험 중심 교육 활동 실시
+- 자연 및 문화 체험을 통한 학생 역량 강화
+- 공동체 의식 및 협동심 함양
+
+2. 체험학습 개요
+- 일시: 2026년   월   일(  )   시 ~   시
+- 장소:
+- 대상: O학년 전체 학생 (OOO명)
+- 인솔 교원: 담임교사 O명, 보조인솔 O명 (학생 20명당 1인 이상)
+- 이동 수단: 전세버스 O대 (안전벨트 장착 확인)
+
+3. 교육과정 연계
+- 관련 교과:
+- 관련 성취기준:
+- 사전 학습 내용:
+- 사후 학습 활동:
+
+4. 세부 일정
+
+시간              활동 내용                      장소         비고
+─────────────────────────────────────────────────────────
+  :  ~  :       학교 집합 및 출발 전 안전교육    운동장
+  :  ~  :       이동                            버스
+  :  ~  :       도착 및 오리엔테이션
+  :  ~  :       체험 활동 1
+  :  ~  :       점심식사                                     도시락
+  :  ~  :       체험 활동 2
+  :  ~  :       정리 및 귀교
+  :  ~  :       학교 도착 및 귀가 지도
+─────────────────────────────────────────────────────────
+
+5. 안전 관리 계획
+가. 사전 안전 점검
+  - 체험학습 장소 사전 답사 실시 (일시:        )
+  - 안전시설 및 위험요소 점검
+  - 우천 시 대체 장소:
+  - 긴급 의료기관 확인:
+
+나. 안전 교육
+  - 출발 전 안전 교육 실시 (버스 안전, 활동 시 주의사항)
+  - 인솔 교사별 담당 학생 배정 (조 편성)
+
+다. 비상 연락 체계
+  - 학교: ☎
+  - 인솔교사(총괄): ☎
+  - 체험학습 장소: ☎
+  - 인근 병원: ☎
+  - 경찰서/소방서: 112/119
+
+라. 특이사항 학생 관리
+  - 알레르기 보유 학생:
+  - 건강 유의 학생:
+  - 비상약품 준비
+
+6. 소요 예산
+- 버스 임차비:            원
+- 입장료:                원 (1인        원 × OOO명)
+- 기타:                  원
+- 합계:                  원
+- 재원: □ 학교운영비  □ 수익자부담경비  □ 기타
+
+7. 수익자부담경비 징수 (해당 시)
+- 1인당 징수액:          원
+- 학교운영위원회 심의 일자: 2026년   월   일
+- 감면 대상: 기초수급, 차상위, 한부모 (학교 지원)
+
+8. 기대 효과
+-
+-
+
+붙임: 1. 가정통신문 1부
+      2. 현장체험학습 동의서 1부
+      3. 안전점검표 1부.  끝.
+
+작성일: 2026년   월   일
+작성자: O학년 부장 OOO
+
+OO초등학교장`,
+  },
+  // === 현장체험학습 결과보고서 ===
+  {
+    id: 'tpl-15',
+    title: '현장체험학습 결과보고서',
+    type: '보고서',
+    content: `2026학년도 현장체험학습 결과 보고서
+
+OO초등학교
+
+1. 체험학습 개요
+- 일시: 2026년   월   일(  )   시 ~   시
+- 장소:
+- 대상: O학년 전체 학생 (참가: OOO명 / 전체: OOO명)
+- 인솔 교원: O명 (담임 O명, 보조 O명)
+- 이동 수단: 전세버스 O대
+
+2. 실시 내용
+가. 체험 활동 1:
+  - 내용:
+  - 학생 반응:
+
+나. 체험 활동 2:
+  - 내용:
+  - 학생 반응:
+
+3. 참가 현황
+- 참가 대상: OOO명
+- 실제 참가: OOO명 (참가율: OO.O%)
+- 불참: O명 (사유: 질병 O명, 기타 O명)
+- 불참 학생 지도: 학교 잔류 프로그램 운영
+
+4. 교육과정 연계 성과
+- 관련 교과:
+- 사전 학습과의 연계:
+- 사후 학습 활동 계획:
+
+5. 예산 집행 내역
+┌──────────┬──────────┬──────────┬──────────┐
+│    항목    │  예산액   │  집행액   │   비고   │
+├──────────┼──────────┼──────────┼──────────┤
+│ 버스 임차비 │          │          │          │
+│ 입장료     │          │          │          │
+│ 기타       │          │          │          │
+├──────────┼──────────┼──────────┼──────────┤
+│ 합계       │          │          │          │
+└──────────┴──────────┴──────────┴──────────┘
+- 잔액 처리:
+
+6. 안전 관련 사항
+- 안전사고 발생 여부: □ 없음  □ 있음 (내용:                )
+- 특이사항:
+
+7. 종합 평가
+가. 우수한 점:
+나. 개선이 필요한 점:
+다. 차기 체험학습 시 반영 사항:
+
+8. 학생 소감 (대표)
+-
+-
+
+붙임: 1. 활동 사진 1부
+      2. 예산 정산서 1부
+      3. 학생 활동지(소감문) 샘플 1부.  끝.
+
+보고일: 2026년   월   일
+보고자: O학년 부장 OOO
+
+OO초등학교장`,
+  },
+  // === 학부모 상담 기록지 ===
+  {
+    id: 'tpl-16',
+    title: '학부모 상담 기록지',
+    type: '기타',
+    content: `학부모 상담 기록지
+
+OO초등학교 2026학년도
+
+1. 학생 정보
+- 학년/반/번호: O학년 O반 O번
+- 학생명:
+- 담임교사:
+
+2. 상담 정보
+- 상담 일시: 2026년   월   일(  )   시   분 ~   시   분
+- 상담 장소: □ 교실  □ 상담실  □ 전화  □ 화상  □ 기타(        )
+- 상담 유형: □ 정기 상담  □ 수시 상담  □ 학부모 요청  □ 교사 요청
+- 상담 대상: □ 부  □ 모  □ 조부모  □ 기타(        )
+- 상담자(보호자명):                  (연락처:                )
+
+3. 상담 영역 (해당란에 ✓)
+□ 학습(교과 성적, 학습 태도, 학습 방법 등)
+□ 교우관계(또래 관계, 갈등, 따돌림 등)
+□ 생활습관(기본 생활, 출결, 건강 등)
+□ 정서·행동(불안, 우울, ADHD, 분노 등)
+□ 진로(적성, 진학 등)
+□ 가정환경(가정 내 어려움, 양육 등)
+□ 특수교육(통합교육, IEP 등)
+□ 기타(                              )
+
+4. 상담 내용
+가. 학부모 의견 / 상담 요청 사항:
+
+
+
+나. 교사 소견 / 학교에서의 학생 모습:
+
+
+
+5. 합의 사항 / 지도 방향
+가. 가정에서:
+
+나. 학교에서:
+
+6. 후속 조치
+- □ 추가 상담 필요 (예정일:       월       일)
+- □ Wee 클래스 / 전문상담 연계 (연계일:                )
+- □ 외부 기관 연계 (기관명:                            )
+- □ 학교폭력 관련 조치 필요
+- □ 특수교육 관련 조치 필요
+- □ 기타 (                                            )
+
+7. 비고
+
+
+
+상담 교사:              (서명)     2026.   .   .
+
+※ 본 상담 기록지는 개인정보보호법에 따라 비밀이 보장되며,
+   교육 목적으로만 활용됩니다.`,
+  },
+  // === 안전교육 실시 보고서 (간략 양식) ===
+  {
+    id: 'tpl-17',
+    title: '7대 안전교육 실시 기록부',
+    type: '보고서',
+    content: `2026학년도 학교 안전교육 실시 기록부
+
+OO초등학교
+
+※ 학교안전교육 실시 기준 등에 관한 고시(교육부고시 제2022-2호) 근거
+※ 7대 안전교육 영역: 생활안전, 교통안전, 폭력예방 및 신변안전,
+   약물·사이버중독 예방, 재난안전, 직업안전, 응급처치
+
+학년/반: O학년 O반    담임교사:
+
+┌────┬─────────┬────┬────────┬────────┬──────┬────┐
+│번호│  교육 영역   │ 일시 │  교육 내용  │  교육방법  │교육시간│참여수│
+├────┼─────────┼────┼────────┼────────┼──────┼────┤
+│ 1  │생활안전    │  /  │           │□강의□체험│      │    │
+├────┼─────────┼────┼────────┼────────┼──────┼────┤
+│ 2  │교통안전    │  /  │           │□강의□체험│      │    │
+├────┼─────────┼────┼────────┼────────┼──────┼────┤
+│ 3  │폭력예방및  │  /  │           │□강의□체험│      │    │
+│    │신변안전    │     │           │          │      │    │
+├────┼─────────┼────┼────────┼────────┼──────┼────┤
+│ 4  │약물·사이버 │  /  │           │□강의□체험│      │    │
+│    │중독예방    │     │           │          │      │    │
+├────┼─────────┼────┼────────┼────────┼──────┼────┤
+│ 5  │재난안전    │  /  │           │□강의□체험│      │    │
+├────┼─────────┼────┼────────┼────────┼──────┼────┤
+│ 6  │직업안전    │  /  │           │□강의□체험│      │    │
+├────┼─────────┼────┼────────┼────────┼──────┼────┤
+│ 7  │응급처치    │  /  │           │□강의□체험│      │    │
+└────┴─────────┴────┴────────┴────────┴──────┴────┘
+
+※ NEIS 등록 경로: NEIS > 학생생활 > 안전교육 > 교육실적등록
+※ 안전교육 시수: 연간 51시간 이상 (학기별 25.5시간 이상)
+
+누적 실시 현황
+- 1학기:      시간 /  25.5시간
+- 2학기:      시간 /  25.5시간
+- 연간 합계:  시간 /  51시간
+
+확인
+
+담임교사:          (인)
+안전부장:          (인)`,
+  },
+  // === 방과후학교 운영 계획서 ===
+  {
+    id: 'tpl-18',
+    title: '방과후학교 운영 계획서',
+    type: '계획서',
+    content: `2026학년도 O학기 방과후학교 운영 계획서
+
+OO초등학교
+
+1. 운영 목적
+- 학생의 소질과 적성 계발 기회 제공
+- 사교육비 경감 및 교육 격차 해소
+- 돌봄 사각지대 해소 및 맞벌이 가정 지원
+
+2. 운영 기간
+- 2026년   월   일(  ) ~   월   일(  )
+- 총 OO주간 운영
+
+3. 운영 시간
+- 방과 후 ~ 17:00 (강좌별 상이)
+- 월~금 (주 5일)
+
+4. 개설 강좌 현황
+
+┌────┬─────────┬────┬──────┬────┬─────┬──────┐
+│번호│  강좌명    │요일  │  시간  │정원│ 강사 │수강료/월│
+├────┼─────────┼────┼──────┼────┼─────┼──────┤
+│ 1  │           │      │       │    │      │        │
+├────┼─────────┼────┼──────┼────┼─────┼──────┤
+│ 2  │           │      │       │    │      │        │
+├────┼─────────┼────┼──────┼────┼─────┼──────┤
+│ 3  │           │      │       │    │      │        │
+├────┼─────────┼────┼──────┼────┼─────┼──────┤
+│ 4  │           │      │       │    │      │        │
+├────┼─────────┼────┼──────┼────┼─────┼──────┤
+│ 5  │           │      │       │    │      │        │
+└────┴─────────┴────┴──────┴────┴─────┴──────┘
+
+5. 강사 채용 계획
+- 채용 방법: 공개 채용 (학교 홈페이지 공고)
+- 자격 요건: 해당 분야 자격증 소지자 또는 관련 경력자
+- 채용 절차: 서류심사 → 면접(시범수업) → 선정위원회 심의 → 계약
+- 강사료 지급: K-에듀파인 통한 계좌 입금
+
+6. 수강료 관리
+- 징수 방법: 학교 가상계좌 입금
+- 수강료 기준: 학교운영위원회 심의를 거쳐 결정
+- 감면 대상: 기초생활수급자, 차상위계층, 한부모가정 (100% 감면)
+             그 외 교육비 지원 대상 (학교 기준에 따라)
+
+7. 안전 관리
+- 방과후학교 활동 중 안전사고 대비 보험 가입
+- 학교안전공제회 적용
+- 귀가 지도: 하교 시 안전 귀가 지도
+
+8. 프로그램 질 관리
+- 학기별 1회 학생·학부모 만족도 조사 실시
+- 수업 참관 (담당 교사)
+- 강사 연수 실시 (안전교육, 아동학대 예방교육 등)
+
+9. 소요 예산
+- 강사료:              원
+- 재료비:              원
+- 운영비:              원
+- 합계:                원
+- 재원: □ 방과후학교 지원금  □ 수강료  □ 학교운영비
+
+10. 학교운영위원회 심의
+- 심의 일자: 2026년   월   일
+- 심의 결과:
+
+붙임: 1. 강좌별 세부 운영 계획 1부
+      2. 수강 신청서 양식 1부
+      3. 가정통신문 1부.  끝.
+
+작성일: 2026년   월   일
+작성자: 방과후학교 담당 OOO
+
+OO초등학교장`,
+  },
+  // === 교육과정 운영 계획서 ===
+  {
+    id: 'tpl-19',
+    title: '교육과정 운영 계획서',
+    type: '계획서',
+    content: `2026학년도 학교 교육과정 운영 계획(안)
+
+OO초등학교
+
+1. 교육 목표
+가. 학교 교육 목표
+
+
+나. 학년별 중점 교육 목표
+- 1~2학년:
+- 3~4학년:
+- 5~6학년:
+
+2. 편성·운영의 기본 방향
+- 2022 개정 교육과정 적용 (2024년~단계적 적용)
+- 학생 중심, 역량 기반 교육과정 운영
+- 교과 간 융합 및 프로젝트 학습 활성화
+
+3. 교과별 수업 시수
+
+┌──────┬───┬───┬───┬───┬───┬───┐
+│  교과  │1학년│2학년│3학년│4학년│5학년│6학년│
+├──────┼───┼───┼───┼───┼───┼───┤
+│ 국어   │     │     │     │     │     │     │
+│ 수학   │     │     │     │     │     │     │
+│ 사회   │ -   │ -   │     │     │     │     │
+│ 과학   │ -   │ -   │     │     │     │     │
+│ 영어   │ -   │ -   │     │     │     │     │
+│ 도덕   │ -   │ -   │     │     │     │     │
+│ 체육   │     │     │     │     │     │     │
+│ 음악   │     │     │     │     │     │     │
+│ 미술   │     │     │     │     │     │     │
+│ 실과   │ -   │ -   │ -   │ -   │     │     │
+│바른생활│     │     │ -   │ -   │ -   │ -   │
+│슬기로운│     │     │ -   │ -   │ -   │ -   │
+│즐거운  │     │     │ -   │ -   │ -   │ -   │
+├──────┼───┼───┼───┼───┼───┼───┤
+│ 교과합계│     │     │     │     │     │     │
+│창의적체│     │     │     │     │     │     │
+│험활동  │     │     │     │     │     │     │
+├──────┼───┼───┼───┼───┼───┼───┤
+│ 총 시수│     │     │     │     │     │     │
+└──────┴───┴───┴───┴───┴───┴───┘
+
+4. 창의적 체험활동 운영 계획
+가. 자율활동:
+나. 동아리활동:
+다. 봉사활동:
+라. 진로활동:
+
+5. 범교과 학습 주제 편성
+- 안전교육: 연 51시간 이상
+- 인성교육:
+- 환경교육:
+- 다문화교육:
+- 기타:
+
+6. 평가 계획
+- 교과별 평가: 과정 중심 수행평가 강화
+- 평가 횟수: 학기당 O회 이상
+- 평가 결과 활용: 학생 맞춤형 피드백
+
+7. 학교운영위원회 심의
+- 심의 일자: 2026년   월   일
+- 심의 결과:
+
+작성일: 2026년   월   일
+작성자: 교무부장 OOO
+
+OO초등학교장`,
+  },
+  // === 생활지도 특이사항 보고서 ===
+  {
+    id: 'tpl-20',
+    title: '생활지도 특이사항 보고서',
+    type: '보고서',
+    content: `생활지도 특이사항 보고서
+
+OO초등학교
+
+※ 본 보고서는 비공개 문서로, 관련 교직원만 열람 가능합니다.
+
+1. 보고 일시: 2026년   월   일(  )   시   분
+2. 보고자: O학년 O반 담임교사 OOO (내선:     )
+
+3. 학생 정보
+- 학년/반/번호: O학년 O반 O번
+- 학생명:
+- 성별: □ 남  □ 여
+- 보호자 연락처:
+
+4. 사안 유형 (해당란에 ✓)
+□ 학교폭력 (의심)    □ 아동학대 (의심)    □ 자해·자살 (의심)
+□ 교우 갈등          □ 무단결석           □ 가출
+□ 정서·행동 문제     □ 건강 문제          □ 기타(          )
+
+5. 발생 경위 및 내용
+
+
+
+
+6. 현재 상태
+- 학생 상태:
+- 조치 사항:
+
+7. 보고 체계 (해당 시 ✓)
+□ 교감 보고 (일시:        )
+□ 교장 보고 (일시:        )
+□ 학교폭력 전담기구 보고 (일시:        )
+□ 외부 기관 신고
+  □ 아동보호전문기관 (112)
+  □ 경찰서 (112)
+  □ 교육지원청
+  □ 기타 (                )
+
+8. 후속 조치 계획
+-
+-
+-
+
+9. 비고
+
+
+보고자:              (서명)
+확인자(교감):         (서명)
+
+※ 아동학대 의심 시 즉시 신고 의무 (아동복지법 제26조)
+   신고전화: 112 또는 아동보호전문기관`,
+  },
+  // === 학교 공문 기본 양식 (K-에듀파인/업무관리시스템) ===
+  {
+    id: 'tpl-21',
+    title: '업무관리시스템 공문 기본양식',
+    type: '공문',
+    content: `OO초등학교
+
+수신: OO교육지원청 (또는 OO초등학교장, 관련 기관장)
+(경유)
+제목:
+
+1. 관련:  OO교육지원청-OOOO호(2026.O.O.) "OOO 관련"
+
+2. 위 호와 관련하여 본교의 OOO 현황을 다음과 같이 보고(안내/협조요청)
+   합니다.
+
+                        - 다  음 -
+
+가.
+나.
+다.
+
+3. 기타 사항
+-
+
+붙임  1. OOO 1부.
+      2. OOO 1부.  끝.
+
+                    OO초등학교장   [직인]
+
+기안자: OOO (내선    )
+검토자: OOO
+협조자:
+시행: OO초-OOOO (2026.O.O.)
+접수: OO교육지원청-OOOO (2026.O.O.)
+우 OOOOO   OO시 OO구 OO로 OO
+전화 OOO-OOOO   전송 OOO-OOOO
+전자우편 OOO@OOOO.go.kr
+/ 공개
+
+※ 업무관리시스템(온-나라/K-에듀파인 문서관리) 기안 시 참조
+※ 문서번호, 시행일, 접수일은 시스템에서 자동 부여`,
+  },
+  // === 학교 행사 결과 보고서 ===
+  {
+    id: 'tpl-22',
+    title: '학교 행사 결과 보고서',
+    type: '보고서',
+    content: `2026학년도 OO 행사 결과 보고서
+
+OO초등학교
+
+1. 행사 개요
+- 행사명:
+- 일시: 2026년   월   일(  )   시 ~   시
+- 장소:
+- 대상: O학년 학생 OOO명 (또는 전교생)
+- 주관: O부 (담당: OOO 교사)
+
+2. 추진 경과
+- 계획 수립:    월   일
+- 기안 결재:    월   일
+- 사전 준비:    월   일 ~   월   일
+- 행사 실시:    월   일
+- 결과 보고:    월   일
+
+3. 행사 내용
+가.
+나.
+다.
+
+4. 참여 현황
+- 참가 대상: OOO명
+- 실제 참가: OOO명 (참가율: OO.O%)
+- 불참 사유:
+
+5. 예산 집행 내역
+- 예산액:              원
+- 집행액:              원
+- 잔액:                원
+- 주요 집행 내역:
+
+6. 행사 평가
+가. 성과 및 우수한 점:
+
+나. 개선 사항:
+
+다. 학생 반응 (대표 소감):
+
+7. 향후 계획
+-
+
+붙임: 1. 행사 사진 1부
+      2. 만족도 조사 결과 1부.  끝.
+
+보고일: 2026년   월   일
+보고자: OOO (O부 담당)
+
+OO초등학교장`,
+  },
 ];
+
+// 현재 월 기반 추천 문서 생성 함수
+function getRecommendedDocuments(month: number): { title: string; description: string; aiPrompt: string }[] {
+  const monthlyTasks = getEnhancedMonthlyTasks(month);
+  const recommendations: { title: string; description: string; aiPrompt: string }[] = [];
+
+  if (monthlyTasks?.tasks) {
+    for (const task of monthlyTasks.tasks) {
+      // 각 월별 업무에서 관련 문서 추천 생성
+      if (task.name.includes('졸업') || task.name.includes('수료')) {
+        recommendations.push({
+          title: '졸업식/수료식 안내문',
+          description: task.detail,
+          aiPrompt: `${month}월 초등학교 졸업식·수료식 학부모 안내문을 작성해줘. 일시, 장소, 주의사항 포함.`,
+        });
+      }
+      if (task.name.includes('예산') || task.name.includes('결산')) {
+        recommendations.push({
+          title: '학교회계 예결산 관련 문서',
+          description: task.detail,
+          aiPrompt: `초등학교 학교회계 ${task.name} 관련 보고서를 작성해줘. K-에듀파인 기준으로.`,
+        });
+      }
+      if (task.name.includes('교육과정')) {
+        recommendations.push({
+          title: '교육과정 운영 계획/보고',
+          description: task.detail,
+          aiPrompt: `${month}월 초등학교 교육과정 관련 문서를 작성해줘. ${task.detail}`,
+        });
+      }
+      if (task.name.includes('담임') || task.name.includes('업무분장')) {
+        recommendations.push({
+          title: '업무분장표/담임 배정표',
+          description: task.detail,
+          aiPrompt: `새 학년도 초등학교 업무분장표 양식을 작성해줘. 부서별 업무 배분 포함.`,
+        });
+      }
+      if (task.name.includes('상담')) {
+        recommendations.push({
+          title: '학부모 상담 안내문',
+          description: task.detail,
+          aiPrompt: `${month}월 학부모 상담주간 안내 가정통신문을 작성해줘. 상담 일정, 방법, 신청 방법 포함.`,
+        });
+      }
+      if (task.name.includes('학교폭력')) {
+        recommendations.push({
+          title: '학교폭력 예방교육 결과보고서',
+          description: task.detail,
+          aiPrompt: `초등학교 학교폭력 예방교육 실시 결과 보고서를 작성해줘.`,
+        });
+      }
+      if (task.name.includes('체험학습') || task.name.includes('소풍') || task.name.includes('수학여행')) {
+        recommendations.push({
+          title: '현장체험학습 계획서',
+          description: task.detail,
+          aiPrompt: `${month}월 초등학교 현장체험학습 계획서를 작성해줘. 안전관리 계획 포함.`,
+        });
+      }
+      if (task.name.includes('안전')) {
+        recommendations.push({
+          title: '안전교육 실시 보고서',
+          description: task.detail,
+          aiPrompt: `초등학교 안전교육 실시 결과 보고서를 작성해줘. ${task.detail}`,
+        });
+      }
+      if (task.name.includes('성적') || task.name.includes('학교생활기록부')) {
+        recommendations.push({
+          title: '성적처리/학생부 관련 안내',
+          description: task.detail,
+          aiPrompt: `${month}월 학기말 성적처리 및 학교생활기록부 기재 관련 교사 안내문을 작성해줘.`,
+        });
+      }
+      if (task.name.includes('방과후')) {
+        recommendations.push({
+          title: '방과후학교 운영 안내문',
+          description: task.detail,
+          aiPrompt: `초등학교 방과후학교 프로그램 안내 가정통신문을 작성해줘. 강좌, 시간, 수강료 포함.`,
+        });
+      }
+      if (task.name.includes('교실') || task.name.includes('환경')) {
+        recommendations.push({
+          title: '교실 배정/환경 정비 계획',
+          description: task.detail,
+          aiPrompt: `새 학년도 교실 배정 및 학습 환경 정비 계획서를 작성해줘.`,
+        });
+      }
+    }
+  }
+
+  // 기본 추천이 없으면 월별 공통 추천 추가
+  if (recommendations.length === 0) {
+    recommendations.push({
+      title: '월간 업무 보고서',
+      description: `${month}월 학교 업무 진행 현황 보고`,
+      aiPrompt: `${month}월 초등학교 월간 업무 보고서 양식을 작성해줘.`,
+    });
+  }
+
+  return recommendations;
+}
 
 export default function DocumentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -783,6 +1657,11 @@ export default function DocumentsPage() {
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
+
+  // 현재 월 기반 추천 문서
+  const currentMonth = new Date().getMonth() + 1;
+  const recommendedDocs = useMemo(() => getRecommendedDocuments(currentMonth), [currentMonth]);
 
   // 로컬 스토리지에서 문서 로드
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -992,17 +1871,88 @@ export default function DocumentsPage() {
         </div>
       </div>
 
+      {/* 이달의 추천 문서 섹션 */}
+      {recommendedDocs.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarCheck className="h-4 w-4 text-blue-600" />
+                {currentMonth}월 추천 문서
+              </CardTitle>
+              <Link href="/ai-chat">
+                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  AI에게 문서 요청
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              이달 업무에 필요한 문서를 추천합니다. 클릭하면 AI가 자동 작성합니다.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {recommendedDocs.map((rec, idx) => (
+                <Card
+                  key={`rec-${idx}`}
+                  className="cursor-pointer hover:border-blue-400 transition-colors bg-white dark:bg-background"
+                  onClick={() => {
+                    setGeneratePrompt(rec.aiPrompt);
+                    setShowGenerator(true);
+                  }}
+                >
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                        <Sparkles className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm">{rec.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {rec.description}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 템플릿 섹션 */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileEdit className="h-4 w-4 text-primary" />
-            문서 템플릿
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileEdit className="h-4 w-4 text-primary" />
+              문서 템플릿
+              <Badge variant="secondary" className="text-xs ml-1">{documentTemplates.length}개</Badge>
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAllTemplates(!showAllTemplates)}
+              className="text-muted-foreground"
+            >
+              {showAllTemplates ? (
+                <>
+                  접기 <ChevronUp className="h-4 w-4 ml-1" />
+                </>
+              ) : (
+                <>
+                  전체보기 <ChevronDown className="h-4 w-4 ml-1" />
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {documentTemplates.map((template) => (
+            {(showAllTemplates ? documentTemplates : documentTemplates.slice(0, 6)).map((template) => (
               <Card
                 key={template.id}
                 className="cursor-pointer hover:border-primary transition-colors"
@@ -1023,6 +1973,43 @@ export default function DocumentsPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+          {!showAllTemplates && documentTemplates.length > 6 && (
+            <div className="mt-3 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllTemplates(true)}
+              >
+                {documentTemplates.length - 6}개 더 보기
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* AI 문서 도우미 바로가기 */}
+      <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border-purple-200 dark:border-purple-900">
+        <CardContent className="pt-5 pb-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                <MessageSquare className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">AI 문서 작성 도우미</h3>
+                <p className="text-xs text-muted-foreground">
+                  AI 채팅에서 원하는 문서를 자유롭게 요청하세요. 가정통신문, 공문, 보고서 등 무엇이든 작성해드립니다.
+                </p>
+              </div>
+            </div>
+            <Link href="/ai-chat">
+              <Button variant="default" size="sm" className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap">
+                AI 채팅 열기
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClipboardList,
   Calendar,
@@ -42,9 +44,19 @@ import {
   Lightbulb,
   ExternalLink,
   Scale,
+  Shield,
+  BookMarked,
+  MonitorSmartphone,
+  ArrowRight,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { monthlyTasksDatabase, type MonthlyTask } from '@/data/education-database';
+import {
+  ENHANCED_TEACHER_DB,
+  getEnhancedMonthlyTasks,
+  getRequiredTrainings,
+} from '@/data/teacher-enhanced-db';
 
 // 월별 업무 데이터 - 실제 초등교사 업무 기반
 const monthlyTasksData: Record<string, { title: string; tasks: TaskCategory[] }> = {
@@ -496,6 +508,9 @@ interface TaskItem {
   task: string;
   priority: 'high' | 'medium' | 'low';
   deadline: string;
+  neisPath?: string;
+  legalBasis?: string;
+  isEnhanced?: boolean;
 }
 
 const priorityConfig = {
@@ -504,14 +519,95 @@ const priorityConfig = {
   low: { label: '낮음', color: 'bg-green-100 text-green-700 border-green-200' },
 };
 
+// 월 키 매핑 (숫자 -> 영어 키)
+const monthKeyMap: Record<string, string> = {
+  '1': 'january', '2': 'february', '3': 'march', '4': 'april',
+  '5': 'may', '6': 'june', '7': 'july', '8': 'august',
+  '9': 'september', '10': 'october', '11': 'november', '12': 'december',
+};
+
+// 법정 의무교육 timing에서 해당 월과 관련 있는지 판단
+function isRelevantToMonth(timing: string, month: number): boolean {
+  const monthStr = `${month}월`;
+  // "3월", "9월" 같은 직접 언급
+  if (timing.includes(monthStr)) return true;
+  // "3~6월" 같은 범위
+  const rangeMatch = timing.match(/(\d+)~(\d+)월/);
+  if (rangeMatch) {
+    const start = parseInt(rangeMatch[1]);
+    const end = parseInt(rangeMatch[2]);
+    if (month >= start && month <= end) return true;
+  }
+  // "연중" - 모든 월에 해당
+  if (timing.includes('연중')) return true;
+  // 학기 초: 3월, 9월
+  if (timing.includes('학기 초') && (month === 3 || month === 9)) return true;
+  // 학기말: 6~7월, 12~1월
+  if (timing.includes('학기말') && (month === 6 || month === 7 || month === 12 || month === 1)) return true;
+  return false;
+}
+
 export default function MonthlyTasksPage() {
   const currentMonth = new Date().getMonth() + 1;
   const [selectedMonth, setSelectedMonth] = useState(String(currentMonth));
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const [completedTrainings, setCompletedTrainings] = useState<Set<string>>(new Set());
   const [selectedTask, setSelectedTask] = useState<MonthlyTask | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('tasks');
 
-  const monthData = monthlyTasksData[selectedMonth];
+  // 기존 월별 데이터
+  const baseMonthData = monthlyTasksData[selectedMonth];
+
+  // Enhanced 월별 보강 업무 가져오기
+  const enhancedTasks = useMemo(() => {
+    return getEnhancedMonthlyTasks(parseInt(selectedMonth));
+  }, [selectedMonth]);
+
+  // 기존 + 보강 업무 합치기
+  const monthData = useMemo(() => {
+    if (!baseMonthData) return null;
+
+    const mergedTasks = [...baseMonthData.tasks];
+
+    if (enhancedTasks && enhancedTasks.tasks && enhancedTasks.tasks.length > 0) {
+      const enhancedItems: TaskItem[] = enhancedTasks.tasks.map((t: { name: string; deadline: string; detail?: string; neisPath?: string; legalBasis?: string }, idx: number) => ({
+        id: `enhanced-${selectedMonth}-${idx}`,
+        task: t.name,
+        priority: 'medium' as const,
+        deadline: t.deadline,
+        neisPath: t.neisPath,
+        legalBasis: t.legalBasis,
+        isEnhanced: true,
+      }));
+
+      // "보강 업무" 카테고리로 추가
+      mergedTasks.push({
+        category: '보강 업무 (놓치기 쉬운 업무)',
+        icon: Sparkles,
+        color: 'text-amber-500',
+        items: enhancedItems,
+      });
+    }
+
+    return {
+      title: baseMonthData.title,
+      tasks: mergedTasks,
+    };
+  }, [baseMonthData, enhancedTasks, selectedMonth]);
+
+  // 해당 월 법정 의무교육 필터
+  const monthlyMandatoryEd = useMemo(() => {
+    const monthNum = parseInt(selectedMonth);
+    return ENHANCED_TEACHER_DB.mandatoryEducation.items.filter(item =>
+      isRelevantToMonth(item.timing, monthNum)
+    );
+  }, [selectedMonth]);
+
+  // 교사 필수 연수 데이터
+  const teacherTrainings = useMemo(() => {
+    return ENHANCED_TEACHER_DB.teacherTraining.items;
+  }, []);
 
   // 데이터베이스에서 선택된 월의 상세 업무 가져오기
   const detailedTasks = useMemo(() => {
@@ -546,6 +642,18 @@ export default function MonthlyTasksPage() {
     });
   }, []);
 
+  const toggleTraining = useCallback((trainingId: string) => {
+    setCompletedTrainings((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(trainingId)) {
+        newSet.delete(trainingId);
+      } else {
+        newSet.add(trainingId);
+      }
+      return newSet;
+    });
+  }, []);
+
   const stats = useMemo(() => {
     if (!monthData) return { total: 0, completed: 0, percentage: 0 };
     const allTasks = monthData.tasks.flatMap((cat) => cat.items);
@@ -557,6 +665,16 @@ export default function MonthlyTasksPage() {
       percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
     };
   }, [monthData, completedTasks]);
+
+  const trainingStats = useMemo(() => {
+    const total = teacherTrainings.length;
+    const completed = teacherTrainings.filter(t => completedTrainings.has(t.id)).length;
+    return {
+      total,
+      completed,
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
+  }, [teacherTrainings, completedTrainings]);
 
   const monthNames = [
     '1월', '2월', '3월', '4월', '5월', '6월',
@@ -592,6 +710,31 @@ export default function MonthlyTasksPage() {
         </div>
       </div>
 
+      {/* Quick Links */}
+      <div className="flex flex-wrap gap-2">
+        <Link href="/duties-guide">
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <BookMarked className="h-4 w-4" />
+            업무분장 가이드
+            <ArrowRight className="h-3 w-3" />
+          </Button>
+        </Link>
+        <Link href="/documents">
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <FileText className="h-4 w-4" />
+            문서 서식
+            <ArrowRight className="h-3 w-3" />
+          </Button>
+        </Link>
+        <Link href="/calendar">
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Calendar className="h-4 w-4" />
+            학사일정
+            <ArrowRight className="h-3 w-3" />
+          </Button>
+        </Link>
+      </div>
+
       {/* Progress Card */}
       <Card>
         <CardContent className="pt-6">
@@ -611,126 +754,453 @@ export default function MonthlyTasksPage() {
         </CardContent>
       </Card>
 
-      {/* Task Categories */}
-      {monthData ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {monthData.tasks.map((category) => {
-            const Icon = category.icon;
-            const categoryCompleted = category.items.filter((t) =>
-              completedTasks.has(t.id)
-            ).length;
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="tasks" className="gap-1.5">
+            <ListChecks className="h-4 w-4" />
+            <span className="hidden sm:inline">월별 업무</span>
+            <span className="sm:hidden">업무</span>
+          </TabsTrigger>
+          <TabsTrigger value="mandatory" className="gap-1.5">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">법정 의무교육</span>
+            <span className="sm:hidden">의무교육</span>
+          </TabsTrigger>
+          <TabsTrigger value="training" className="gap-1.5">
+            <BookMarked className="h-4 w-4" />
+            <span className="hidden sm:inline">교사 필수연수</span>
+            <span className="sm:hidden">필수연수</span>
+          </TabsTrigger>
+        </TabsList>
 
-            return (
-              <Card key={category.category}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={cn('p-2 rounded-lg bg-accent', category.color)}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <span>{category.category}</span>
-                    </div>
-                    <Badge variant="outline">
-                      {categoryCompleted}/{category.items.length}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {category.items.map((item) => {
-                      const isCompleted = completedTasks.has(item.id);
-                      const priority = priorityConfig[item.priority];
+        {/* === TAB 1: 월별 업무 체크리스트 === */}
+        <TabsContent value="tasks" className="space-y-6 mt-4">
+          {monthData ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {monthData.tasks.map((category) => {
+                const Icon = category.icon;
+                const categoryCompleted = category.items.filter((t) =>
+                  completedTasks.has(t.id)
+                ).length;
 
-                      return (
-                        <div
-                          key={item.id}
-                          className={cn(
-                            'flex items-start gap-3 p-3 rounded-lg border transition-colors',
-                            isCompleted
-                              ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
-                              : 'hover:bg-accent/50'
-                          )}
-                        >
-                          <Checkbox
-                            checked={isCompleted}
-                            onCheckedChange={() => toggleTask(item.id)}
-                            className="mt-0.5 cursor-pointer"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p
+                return (
+                  <Card key={category.category}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={cn('p-2 rounded-lg bg-accent', category.color)}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <span>{category.category}</span>
+                        </div>
+                        <Badge variant="outline">
+                          {categoryCompleted}/{category.items.length}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {category.items.map((item) => {
+                          const isCompleted = completedTasks.has(item.id);
+                          const priority = priorityConfig[item.priority];
+
+                          return (
+                            <div
+                              key={item.id}
                               className={cn(
-                                'font-medium cursor-pointer',
-                                isCompleted && 'line-through text-muted-foreground'
+                                'flex items-start gap-3 p-3 rounded-lg border transition-colors',
+                                isCompleted
+                                  ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+                                  : 'hover:bg-accent/50',
+                                item.isEnhanced && !isCompleted && 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/10'
                               )}
-                              onClick={() => toggleTask(item.id)}
                             >
-                              {item.task}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <Badge variant="outline" className={cn('text-xs', priority.color)}>
-                                {priority.label}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {item.deadline}
-                              </span>
-                              {findDetailedTask(item.task) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTaskClick(item.task);
-                                  }}
+                              <Checkbox
+                                checked={isCompleted}
+                                onCheckedChange={() => toggleTask(item.id)}
+                                className="mt-0.5 cursor-pointer"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p
+                                  className={cn(
+                                    'font-medium cursor-pointer',
+                                    isCompleted && 'line-through text-muted-foreground'
+                                  )}
+                                  onClick={() => toggleTask(item.id)}
                                 >
-                                  <Info className="h-3 w-3 mr-1" />
-                                  상세보기
-                                </Button>
+                                  {item.task}
+                                  {item.isEnhanced && (
+                                    <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">
+                                      보강
+                                    </Badge>
+                                  )}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <Badge variant="outline" className={cn('text-xs', priority.color)}>
+                                    {priority.label}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {item.deadline}
+                                  </span>
+                                  {/* NEIS 경로 표시 */}
+                                  {item.neisPath && (
+                                    <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-300 dark:border-green-800">
+                                      <MonitorSmartphone className="h-2.5 w-2.5 mr-0.5" />
+                                      NEIS
+                                    </Badge>
+                                  )}
+                                  {/* 법적 근거 표시 */}
+                                  {item.legalBasis && (
+                                    <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-300 dark:border-purple-800">
+                                      <Scale className="h-2.5 w-2.5 mr-0.5" />
+                                      법령
+                                    </Badge>
+                                  )}
+                                  {findDetailedTask(item.task) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTaskClick(item.task);
+                                      }}
+                                    >
+                                      <Info className="h-3 w-3 mr-1" />
+                                      상세보기
+                                    </Button>
+                                  )}
+                                </div>
+                                {/* NEIS 경로 펼치기 */}
+                                {item.neisPath && (
+                                  <div className="mt-1.5 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded font-mono">
+                                    {item.neisPath}
+                                  </div>
+                                )}
+                              </div>
+                              {isCompleted ? (
+                                <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                              ) : (
+                                <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                               )}
                             </div>
-                          </div>
-                          {isCompleted ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">해당 월의 업무 데이터가 없습니다.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* === TAB 2: 법정 의무교육 일정 === */}
+        <TabsContent value="mandatory" className="space-y-6 mt-4">
+          {/* 해당 월 안내 */}
+          <Card className="bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+                  <Shield className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-indigo-900 dark:text-indigo-100">
+                    {selectedMonth}월 법정 의무교육 안내
+                  </h4>
+                  <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
+                    학교안전교육 실시 기준 등에 관한 고시(교육부고시 제2022-2호) 및 개별 법령에 따라
+                    이번 달에 실시가 필요하거나 권장되는 법정 의무교육 {monthlyMandatoryEd.length}건이 있습니다.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {monthlyMandatoryEd.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {monthlyMandatoryEd.map((item) => (
+                <Card key={item.id} className="overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                          <Shield className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">{item.name}</CardTitle>
+                          <CardDescription className="text-xs mt-0.5">
+                            {item.targetGrade} | {item.requiredHours}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-800">
+                        {item.timing}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* 법적 근거 */}
+                    <div className="flex items-start gap-2 text-sm">
+                      <Scale className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">{item.legalBasis}</span>
+                    </div>
+
+                    {/* 주요 내용 */}
+                    <div className="bg-accent/50 p-3 rounded-lg">
+                      <h5 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                        <ListChecks className="h-4 w-4 text-blue-500" />
+                        주요 교육 내용
+                      </h5>
+                      <ul className="space-y-1">
+                        {item.details.slice(0, 4).map((detail, idx) => (
+                          <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <ChevronRight className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                            <span>{detail}</span>
+                          </li>
+                        ))}
+                        {item.details.length > 4 && (
+                          <li className="text-xs text-blue-600 dark:text-blue-400">
+                            ... 외 {item.details.length - 4}건
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+
+                    {/* NEIS 경로 */}
+                    {item.neisPath && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <MonitorSmartphone className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                        <code className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded font-mono text-xs">
+                          {item.neisPath}
+                        </code>
+                      </div>
+                    )}
+
+                    {/* 담당 & 실수 방지 */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        담당: {item.responsiblePerson}
+                      </span>
+                    </div>
+
+                    {/* 자주 하는 실수 */}
+                    {item.commonMistakes && item.commonMistakes.length > 0 && (
+                      <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg border border-red-100 dark:border-red-900">
+                        <h5 className="text-xs font-medium text-red-700 dark:text-red-300 mb-1.5 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          자주 하는 실수
+                        </h5>
+                        <ul className="space-y-1">
+                          {item.commonMistakes.map((mistake, idx) => (
+                            <li key={idx} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
+                              <span>-</span>
+                              <span>{mistake}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">이번 달에 특별히 예정된 법정 의무교육이 없습니다.</p>
+                <p className="text-xs text-muted-foreground mt-1">"연중" 실시 항목은 학교 일정에 맞춰 분산 운영하세요.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 관련 페이지 링크 */}
+          <Card className="bg-accent/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <Link2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">업무분장 가이드에서 법정 의무교육의 상세 절차를 확인하세요.</span>
+                </div>
+                <Link href="/duties-guide">
+                  <Button variant="outline" size="sm" className="gap-1">
+                    상세 절차 보기
+                    <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* === TAB 3: 교사 필수 연수 === */}
+        <TabsContent value="training" className="space-y-6 mt-4">
+          {/* 연수 진행률 */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">교사 법정 필수연수 이수 현황</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {trainingStats.completed}/{trainingStats.total} 이수 완료 (매년 12월 31일까지)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className={cn(
+                    'text-3xl font-bold',
+                    trainingStats.percentage === 100 ? 'text-green-500' : 'text-orange-500'
+                  )}>
+                    {trainingStats.percentage}%
+                  </span>
+                  <p className="text-sm text-muted-foreground">이수율</p>
+                </div>
+              </div>
+              <Progress
+                value={trainingStats.percentage}
+                className={cn('h-3', trainingStats.percentage === 100 && '[&>div]:bg-green-500')}
+              />
+              {trainingStats.percentage < 100 && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-2 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  미이수 연수 {trainingStats.total - trainingStats.completed}건 - 연말까지 반드시 이수하세요
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 연수 목록 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {teacherTrainings.map((training) => {
+              const isComplete = completedTrainings.has(training.id);
+              return (
+                <Card
+                  key={training.id}
+                  className={cn(
+                    'transition-colors',
+                    isComplete && 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+                  )}
+                >
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={isComplete}
+                        onCheckedChange={() => toggleTraining(training.id)}
+                        className="mt-1 cursor-pointer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className={cn(
+                            'font-medium text-sm',
+                            isComplete && 'line-through text-muted-foreground'
+                          )}>
+                            {training.name}
+                          </h4>
+                          {isComplete ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                           ) : (
-                            <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                            <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">해당 월의 업무 데이터가 없습니다.</p>
+
+                        <div className="mt-2 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3 flex-shrink-0" />
+                            <span>{training.requiredHours} | {training.deadline}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Scale className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{training.legalBasis}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <BookOpen className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{training.method}</span>
+                          </div>
+                          {training.neisPath && (
+                            <div className="text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-2 py-0.5 rounded font-mono">
+                              {training.neisPath}
+                            </div>
+                          )}
+                          {training.penalty && (
+                            <div className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                              {training.penalty}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 연수 팁 */}
+                        {training.tips && training.tips.length > 0 && (
+                          <div className="mt-2 bg-accent/50 p-2 rounded text-xs space-y-0.5">
+                            {training.tips.slice(0, 2).map((tip, idx) => (
+                              <div key={idx} className="flex items-start gap-1 text-muted-foreground">
+                                <Lightbulb className="h-3 w-3 text-yellow-500 mt-0.5 flex-shrink-0" />
+                                <span>{tip}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* 이수 체크리스트 안내 */}
+          <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                  <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-amber-900 dark:text-amber-100">연수 이수 TIP</h4>
+                  <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
+                    <li>- 상반기(3~6월)에 미리 이수하면 연말 몰림을 방지할 수 있습니다</li>
+                    <li>- 이수 후 확인서/이수증을 출력하여 보관하세요</li>
+                    <li>- NEIS 개인연수이력에 모두 등록되었는지 확인하세요</li>
+                    <li>- 심폐소생술은 온라인으로 대체 불가 (실습 필수)</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Tips - 월별 업무 탭에서만 표시 */}
+      {activeTab === 'tasks' && (
+        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900 dark:text-blue-100">업무 TIP</h4>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 mt-1 space-y-1">
+                  <li>- 우선순위가 높은 업무부터 처리하세요</li>
+                  <li>- 마감일을 캘린더에 등록하여 관리하세요</li>
+                  <li>- 완료한 업무는 체크하여 진행 상황을 파악하세요</li>
+                  <li>- 학교별로 일정이 다를 수 있으니 학사일정을 확인하세요</li>
+                  <li>- "보강" 표시된 업무는 놓치기 쉬운 업무이니 특별히 주의하세요</li>
+                </ul>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Tips */}
-      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-        <CardContent className="pt-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h4 className="font-medium text-blue-900 dark:text-blue-100">업무 TIP</h4>
-              <ul className="text-sm text-blue-700 dark:text-blue-300 mt-1 space-y-1">
-                <li>• 우선순위가 높은 업무부터 처리하세요</li>
-                <li>• 마감일을 캘린더에 등록하여 관리하세요</li>
-                <li>• 완료한 업무는 체크하여 진행 상황을 파악하세요</li>
-                <li>• 학교별로 일정이 다를 수 있으니 학사일정을 확인하세요</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* 업무 상세 정보 Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
@@ -864,8 +1334,45 @@ export default function MonthlyTasksPage() {
                         </Badge>
                       ))}
                     </div>
+                    <Link href="/documents" className="inline-block mt-2">
+                      <Button variant="ghost" size="sm" className="text-xs text-blue-600 hover:text-blue-700 gap-1">
+                        <FileText className="h-3 w-3" />
+                        문서 서식 페이지에서 양식 다운로드
+                        <ArrowRight className="h-3 w-3" />
+                      </Button>
+                    </Link>
                   </div>
                 )}
+
+                {/* 관련 페이지 바로가기 */}
+                <div className="pt-2">
+                  <h4 className="flex items-center gap-2 font-semibold mb-3">
+                    <Link2 className="h-5 w-5 text-blue-500" />
+                    관련 페이지
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    <Link href="/duties-guide">
+                      <Badge
+                        variant="outline"
+                        className="cursor-pointer hover:bg-accent transition-colors gap-1"
+                      >
+                        <BookMarked className="h-3 w-3" />
+                        업무분장 상세 절차
+                        <ArrowRight className="h-3 w-3" />
+                      </Badge>
+                    </Link>
+                    <Link href="/documents">
+                      <Badge
+                        variant="outline"
+                        className="cursor-pointer hover:bg-accent transition-colors gap-1"
+                      >
+                        <FileText className="h-3 w-3" />
+                        문서 서식 양식
+                        <ArrowRight className="h-3 w-3" />
+                      </Badge>
+                    </Link>
+                  </div>
+                </div>
               </div>
 
               {/* 하단 버튼 */}

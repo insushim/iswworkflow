@@ -43,6 +43,13 @@ import {
   Lightbulb,
   AlertCircle,
   Monitor,
+  Calendar,
+  Shield,
+  Award,
+  Coffee,
+  Sunrise,
+  Sun,
+  Sunset,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -59,10 +66,17 @@ import {
   departments,
   teacherResources,
 } from '@/data/teacher-comprehensive-db';
+import {
+  ENHANCED_TEACHER_DB,
+  getEnhancedMonthlyTasks,
+  getSchoolEventsByMonth,
+  getDailyRoutineByTime,
+} from '@/data/teacher-enhanced-db';
 import { useUserSettings } from '@/hooks/useFirestore';
 
 const SETTINGS_KEY = 'eduflow_teacher_settings';
 const COMPLETED_TASKS_KEY = 'eduflow_completed_tasks';
+const COMPLETED_TRAININGS_KEY = 'eduflow_completed_trainings';
 
 interface TeacherSettings {
   name: string;
@@ -87,6 +101,7 @@ export default function DashboardPage() {
   const [settings, setSettings] = useState<TeacherSettings | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
+  const [completedTrainingIds, setCompletedTrainingIds] = useState<Set<string>>(new Set());
 
   // 설정값
   const [setupName, setSetupName] = useState('');
@@ -167,6 +182,11 @@ export default function DashboardPage() {
     if (savedCompleted) {
       setCompletedTaskIds(new Set(JSON.parse(savedCompleted)));
     }
+
+    const savedTrainings = localStorage.getItem(COMPLETED_TRAININGS_KEY);
+    if (savedTrainings) {
+      setCompletedTrainingIds(new Set(JSON.parse(savedTrainings)));
+    }
   }, []);
 
   const handleSaveSettings = () => {
@@ -201,8 +221,22 @@ export default function DashboardPage() {
     });
   };
 
+  const toggleTraining = (trainingId: string) => {
+    setCompletedTrainingIds(prev => {
+      const next = new Set(prev);
+      if (next.has(trainingId)) {
+        next.delete(trainingId);
+      } else {
+        next.add(trainingId);
+      }
+      localStorage.setItem(COMPLETED_TRAININGS_KEY, JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
+  const currentHour = now.getHours();
   const monthData = getCurrentMonthTasks();
   const role = settings?.role || 'homeroom';
 
@@ -215,6 +249,61 @@ export default function DashboardPage() {
 
   const completedCount = myTasks.filter(t => completedTaskIds.has(t.id)).length;
   const progressPercent = myTasks.length > 0 ? Math.round((completedCount / myTasks.length) * 100) : 0;
+
+  // Enhanced DB data
+  const enhancedMonthlyTasks = useMemo(() => getEnhancedMonthlyTasks(currentMonth), [currentMonth]);
+  const schoolEvents = useMemo(() => getSchoolEventsByMonth(currentMonth), [currentMonth]);
+  const allTrainings = useMemo(() => ENHANCED_TEACHER_DB.teacherTraining.items, []);
+  const mandatoryEducationItems = useMemo(() => ENHANCED_TEACHER_DB.mandatoryEducation.items, []);
+
+  // 이번 달 법정 의무교육 필터 (timing 필드에서 현재 월 매칭)
+  const monthNames: Record<number, string[]> = {
+    1: ['1월'], 2: ['2월'], 3: ['3월'], 4: ['4월'], 5: ['5월'], 6: ['6월'],
+    7: ['7월'], 8: ['8월'], 9: ['9월'], 10: ['10월'], 11: ['11월'], 12: ['12월'],
+  };
+  const currentMonthMandatory = useMemo(() => {
+    const monthStr = monthNames[currentMonth]?.[0] || '';
+    return mandatoryEducationItems.filter(item => {
+      if (item.timing.includes('연중')) return true;
+      if (item.timing.includes(monthStr)) return true;
+      // 범위 매칭: "3~6월" 패턴
+      const rangeMatch = item.timing.match(/(\d+)~(\d+)월/);
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1]);
+        const end = parseInt(rangeMatch[2]);
+        if (currentMonth >= start && currentMonth <= end) return true;
+      }
+      return false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth, mandatoryEducationItems]);
+
+  // 현재 시간대 루틴
+  const currentTimeSlot = useMemo(() => {
+    if (currentHour < 8) return null;
+    if (currentHour < 9) return 'beforeSchool';
+    if (currentHour < 9.5) return 'morningActivity';
+    if (currentHour < 12.5) return 'classTime';
+    if (currentHour < 13.5) return 'lunchTime';
+    if (currentHour < 15) return 'afternoonClass';
+    return 'afterSchool';
+  }, [currentHour]);
+
+  const currentRoutine = useMemo(() => {
+    if (!currentTimeSlot) return null;
+    return getDailyRoutineByTime(currentTimeSlot);
+  }, [currentTimeSlot]);
+
+  const timeSlotLabels: Record<string, { label: string; icon: typeof Sunrise }> = {
+    beforeSchool: { label: '출근~등교 전', icon: Sunrise },
+    morningActivity: { label: '아침활동', icon: Coffee },
+    classTime: { label: '오전 수업', icon: Sun },
+    lunchTime: { label: '점심시간', icon: Coffee },
+    afternoonClass: { label: '오후 수업', icon: Sun },
+    afterSchool: { label: '방과 후', icon: Sunset },
+  };
+
+  const uncompletedTrainingCount = allTrainings.filter(t => !completedTrainingIds.has(t.id)).length;
 
   if (!settings || showSetup) {
     return (
@@ -646,6 +735,367 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* ========== 강화형 DB 기반 추가 섹션 ========== */}
+
+      {/* 오늘의 루틴 */}
+      {currentRoutine && currentTimeSlot && (
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              {(() => {
+                const SlotIcon = timeSlotLabels[currentTimeSlot]?.icon || Clock;
+                return <SlotIcon className="h-5 w-5 text-amber-600" />;
+              })()}
+              오늘의 루틴 - {timeSlotLabels[currentTimeSlot]?.label}
+              <Badge variant="outline" className="ml-auto text-xs border-amber-300 text-amber-700 dark:text-amber-400">
+                {currentRoutine.time}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {currentRoutine.tasks.map((task: { name: string; duration: string; detail: string }, idx: number) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-white/60 dark:bg-gray-900/40 border border-amber-100 dark:border-amber-900/30"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-700 dark:text-amber-400 text-xs font-bold">
+                    {idx + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{task.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{task.detail}</p>
+                    <Badge variant="secondary" className="mt-1 text-[10px]">
+                      <Clock className="h-2.5 w-2.5 mr-0.5" />
+                      {task.duration}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 이번 달 법정 의무교육 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Shield className="h-5 w-5 text-emerald-600" />
+                {currentMonth}월 법정 의무교육
+              </CardTitle>
+              <Badge variant="secondary">{currentMonthMandatory.length}개 해당</Badge>
+            </div>
+            <CardDescription>이번 달 실시해야 할 학생 대상 법정 의무교육</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[320px] pr-2">
+              <div className="space-y-3">
+                {currentMonthMandatory.length > 0 ? currentMonthMandatory.map(item => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-lg border hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <h4 className="text-sm font-semibold">{item.name}</h4>
+                      <Badge variant="outline" className="text-[10px] flex-shrink-0">
+                        {item.requiredHours}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      {item.targetGrade} | 시기: {item.timing}
+                    </p>
+                    <div className="text-xs text-muted-foreground bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded mb-1.5">
+                      {item.legalBasis}
+                    </div>
+                    {item.neisPath && (
+                      <div className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                        {item.neisPath}
+                      </div>
+                    )}
+                    {item.practicalTips.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">실천 팁:</p>
+                        <ul className="space-y-0.5">
+                          {item.practicalTips.slice(0, 2).map((tip, i) => (
+                            <li key={i} className="text-[10px] text-muted-foreground flex items-start gap-1">
+                              <ChevronRight className="h-2.5 w-2.5 mt-0.5 flex-shrink-0" />
+                              {tip}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Shield className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>이번 달 특별히 지정된 법정 의무교육이 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* 다가오는 행사 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-violet-600" />
+                {currentMonth}월 다가오는 행사
+              </CardTitle>
+              <Badge variant="secondary">{schoolEvents.length}개 행사</Badge>
+            </div>
+            <CardDescription>이번 달 학교 행사 및 기념일</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[320px] pr-2">
+              <div className="space-y-2.5">
+                {schoolEvents.length > 0 ? schoolEvents.map((event, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border transition-colors ${
+                      event.required
+                        ? 'border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20'
+                        : 'hover:border-violet-200 dark:hover:border-violet-800'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="text-sm font-semibold">{event.name}</h4>
+                          {event.required && (
+                            <Badge className="text-[10px] px-1.5 py-0 bg-violet-500 text-white">필수</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{event.description}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <Badge variant="outline" className="text-[10px]">{event.category}</Badge>
+                          <span className="text-[10px] text-muted-foreground">
+                            {event.week}주차
+                          </span>
+                          {'targetGrade' in event && event.targetGrade && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {event.targetGrade}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>이번 달 등록된 행사가 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 필수 연수 미이수 체크 + 보강 업무 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 필수 연수 미이수 체크 위젯 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Award className="h-5 w-5 text-rose-600" />
+                필수 연수 이수 현황
+              </CardTitle>
+              <Badge
+                variant={uncompletedTrainingCount > 0 ? 'destructive' : 'default'}
+                className={uncompletedTrainingCount === 0 ? 'bg-green-500 text-white' : ''}
+              >
+                {uncompletedTrainingCount > 0 ? `${uncompletedTrainingCount}개 미이수` : '전체 이수 완료'}
+              </Badge>
+            </div>
+            <CardDescription>
+              매년 12월 31일까지 이수해야 하는 법정 필수연수 ({allTrainings.length}개)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-3">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-muted-foreground">이수 진행률</span>
+                <span className="font-medium">
+                  {allTrainings.length - uncompletedTrainingCount}/{allTrainings.length}
+                </span>
+              </div>
+              <Progress
+                value={allTrainings.length > 0
+                  ? Math.round(((allTrainings.length - uncompletedTrainingCount) / allTrainings.length) * 100)
+                  : 0}
+                className="h-2"
+              />
+            </div>
+            <ScrollArea className="h-[300px] pr-2">
+              <div className="space-y-2">
+                {allTrainings.map(training => {
+                  const isCompleted = completedTrainingIds.has(training.id);
+                  return (
+                    <div
+                      key={training.id}
+                      className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                        isCompleted
+                          ? 'bg-muted/50 opacity-70 border-green-200 dark:border-green-900'
+                          : 'hover:border-rose-300 dark:hover:border-rose-700'
+                      }`}
+                      onClick={() => toggleTraining(training.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          {isCompleted ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-muted-foreground hover:text-rose-500" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h4 className={`text-sm font-medium ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                              {training.name}
+                            </h4>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">
+                              {training.requiredHours}
+                            </Badge>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">{training.method}</p>
+                          {!isCompleted && training.penalty && (
+                            <p className="text-[10px] text-rose-500 mt-0.5 flex items-center gap-1">
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              {training.penalty}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* 이번 달 보강 업무 (Enhanced Monthly Tasks) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-sky-600" />
+                {currentMonth}월 놓치기 쉬운 업무
+              </CardTitle>
+              {enhancedMonthlyTasks && (
+                <Badge variant="secondary">
+                  {enhancedMonthlyTasks.tasks.length}건
+                </Badge>
+              )}
+            </div>
+            <CardDescription>기존 업무 외 누락되기 쉬운 보강 업무</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[340px] pr-2">
+              <div className="space-y-3">
+                {enhancedMonthlyTasks?.tasks && enhancedMonthlyTasks.tasks.length > 0 ? (
+                  enhancedMonthlyTasks.tasks.map((task: { name: string; deadline: string; detail: string; legalBasis?: string; neisPath?: string }, idx: number) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-lg border hover:border-sky-300 dark:hover:border-sky-700 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h4 className="text-sm font-semibold">{task.name}</h4>
+                        <Badge variant="outline" className="text-[10px] flex-shrink-0 text-sky-600 border-sky-300">
+                          <Clock className="h-2.5 w-2.5 mr-0.5" />
+                          {task.deadline}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-1.5">{task.detail}</p>
+                      {task.legalBasis && (
+                        <div className="text-[10px] text-muted-foreground bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 rounded mb-1">
+                          {task.legalBasis}
+                        </div>
+                      )}
+                      {task.neisPath && (
+                        <div className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                          {task.neisPath}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>이번 달 추가 보강 업무가 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 개선된 바로가기 */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            주요 기능 바로가기
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/tasks">
+                <ClipboardList className="h-6 w-6 text-indigo-500" />
+                <span className="text-xs font-medium">업무관리</span>
+                <span className="text-[10px] text-muted-foreground">할 일 추적 및 체크</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/documents">
+                <FileText className="h-6 w-6 text-emerald-500" />
+                <span className="text-xs font-medium">문서작성</span>
+                <span className="text-[10px] text-muted-foreground">공문서/가정통신문</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/ai-chat">
+                <Sparkles className="h-6 w-6 text-purple-500" />
+                <span className="text-xs font-medium">AI 도우미</span>
+                <span className="text-[10px] text-muted-foreground">업무 질문/상담</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/school-record">
+                <GraduationCap className="h-6 w-6 text-amber-500" />
+                <span className="text-xs font-medium">생활기록부</span>
+                <span className="text-[10px] text-muted-foreground">AI 문구 생성</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/duties-guide">
+                <BookOpen className="h-6 w-6 text-sky-500" />
+                <span className="text-xs font-medium">업무가이드</span>
+                <span className="text-[10px] text-muted-foreground">부서별 상세 안내</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/monthly-tasks">
+                <CalendarDays className="h-6 w-6 text-rose-500" />
+                <span className="text-xs font-medium">월별 업무</span>
+                <span className="text-[10px] text-muted-foreground">월간 업무 캘린더</span>
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
