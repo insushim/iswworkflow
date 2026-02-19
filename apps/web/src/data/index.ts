@@ -144,3 +144,18 @@ export * from './official-document-templates';
 
 // 부서별 업무 가이드
 export * from './duties-guide-ultra-detailed';
+
+// 강화형 종합 업무 데이터베이스 (500+ 자료원 교차검증)
+export { ENHANCED_TEACHER_DB } from './teacher-enhanced-db';
+export {
+  getMandatoryEducationById,
+  getEnhancedMonthlyTasks,
+  searchNeisMenu,
+  searchLegalReference,
+  searchPlatform,
+  searchDepartmentDuties,
+  getSchoolEventsByMonth,
+  getRequiredTrainings,
+  getCurriculumChangesBySubject,
+  getDailyRoutineByTime,
+} from './teacher-enhanced-db';

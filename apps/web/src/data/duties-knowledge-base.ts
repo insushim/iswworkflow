@@ -2,6 +2,8 @@
 // 교육부, 시도교육청, 학교 매뉴얼, 교사 커뮤니티 교차검증 기반
 // AI 챗봇이 업무 질문에 정확하게 답변할 수 있도록 구조화
 
+import { ENHANCED_TEACHER_DB } from './teacher-enhanced-db';
+
 export interface DutyKnowledge {
   id: string;
   name: string;
@@ -1484,6 +1486,136 @@ export function generateAIContext(dutyId?: string): string {
     });
 
     context += '\n---\n\n';
+  });
+
+  // 강화 DB 추가 (500+ 자료원 교차검증)
+  context += '\n# 강화형 종합 업무 데이터베이스 (Enhanced DB)\n\n';
+
+  // 법정 의무교육
+  context += '## 법정 의무교육 (학생 대상)\n';
+  ENHANCED_TEACHER_DB.mandatoryEducation.items.forEach(item => {
+    context += `- **${item.name}**: ${item.legalBasis} / ${item.requiredHours} / ${item.timing}\n`;
+    if (item.neisPath) context += `  NEIS: ${item.neisPath}\n`;
+  });
+
+  // 교사 필수 연수
+  context += '\n## 교사 필수 연수\n';
+  ENHANCED_TEACHER_DB.teacherTraining.items.forEach(item => {
+    context += `- **${item.name}**: ${item.legalBasis} / ${item.requiredHours} / 기한: ${item.deadline}\n`;
+  });
+
+  // K-에듀파인
+  context += '\n## K-에듀파인 업무 가이드\n';
+  ENHANCED_TEACHER_DB.kEduFine.mainMenus.forEach(menu => {
+    context += `- **${menu.name}**: ${menu.path}\n`;
+    menu.subMenus.forEach(sub => {
+      context += `  - ${sub.name}: ${sub.description}\n`;
+    });
+  });
+
+  // 학교운영위원회
+  context += '\n## 학교운영위원회\n';
+  context += `구성: ${ENHANCED_TEACHER_DB.schoolCommittee.composition.description}\n`;
+  context += '심의사항:\n';
+  ENHANCED_TEACHER_DB.schoolCommittee.mandatoryAgenda.deliberation.forEach(item => {
+    context += `- ${item.name} (${item.legalBasis}): ${item.timing}\n`;
+  });
+
+  // 늘봄학교
+  context += '\n## 늘봄학교/돌봄\n';
+  ENHANCED_TEACHER_DB.neulbomSchool.types.forEach(t => {
+    context += `- **${t.name}**: ${t.time} / 대상: ${t.target}\n`;
+  });
+
+  // 2022 개정교육과정
+  context += '\n## 2022 개정교육과정 핵심 변경\n';
+  Object.values(ENHANCED_TEACHER_DB.curriculum2022.subjectChanges).forEach(s => {
+    context += `- **${s.name}**: ${s.keyChanges.join(', ')}\n`;
+  });
+
+  // 교원능력개발평가
+  context += '\n## 교원능력개발평가\n';
+  const te = ENHANCED_TEACHER_DB.teacherEvaluation;
+  context += `일정:\n`;
+  te.schedule.forEach(s => {
+    context += `- ${s.period}: ${s.task}\n`;
+  });
+  te.evaluationType.forEach(t => {
+    context += `- ${t.name}: 평가자 ${t.evaluator}, 방법 ${t.method}\n`;
+  });
+
+  // 교육활동 보호
+  context += '\n## 교육활동 보호 (교권보호)\n';
+  const tp = ENHANCED_TEACHER_DB.teacherProtection;
+  context += `법적 근거: ${tp.legalBasis}\n`;
+  tp.keyProvisions.forEach(r => {
+    context += `- ${r.title}: ${r.items.join('; ')}\n`;
+  });
+
+  // 다문화교육
+  context += '\n## 다문화교육\n';
+  ENHANCED_TEACHER_DB.multiculturalEducation.studentTypes.forEach(st => {
+    context += `- **${st.type}**: ${st.support}\n`;
+  });
+
+  // 학교회계
+  context += '\n## 학교회계 (예산)\n';
+  ENHANCED_TEACHER_DB.schoolBudget.budgetProcess.steps.forEach(p => {
+    context += `${p.step}: ${p.detail} (${p.timing})\n`;
+  });
+
+  // 담임교사 루틴
+  context += '\n## 담임교사 일일 루틴\n';
+  Object.values(ENHANCED_TEACHER_DB.dailyRoutines.daily).forEach(period => {
+    context += `**${period.time}**\n`;
+    period.tasks.forEach(task => {
+      context += `- ${task.name} (${task.duration}): ${task.detail}\n`;
+    });
+  });
+
+  // 주간 루틴
+  context += '\n## 담임교사 주간 루틴\n';
+  Object.entries(ENHANCED_TEACHER_DB.dailyRoutines.weekly).forEach(([day, tasks]) => {
+    context += `- **${day}**: ${tasks.join(', ')}\n`;
+  });
+
+  // 교사 플랫폼
+  context += '\n## 교사 사용 플랫폼\n';
+  ENHANCED_TEACHER_DB.platforms.systems.forEach(p => {
+    context += `- **${p.name}** (${p.url}): ${p.purpose}\n`;
+  });
+
+  // 법령 총정리
+  context += '\n## 교사 필수 법령\n';
+  ENHANCED_TEACHER_DB.legalReferences.categories.forEach(cat => {
+    context += `### ${cat.category}\n`;
+    cat.laws.forEach(l => {
+      context += `- **${l.name}**: ${l.keyArticles.join('; ')}\n`;
+    });
+  });
+
+  // 20개 부서별 업무
+  context += '\n## 업무분장 20개 영역\n';
+  ENHANCED_TEACHER_DB.departmentDuties.departments.forEach(dept => {
+    context += `- **${dept.name}**: ${dept.keyDuties.join(', ')}\n`;
+  });
+
+  // NEIS 상세 메뉴
+  context += '\n## NEIS 상세 메뉴 가이드\n';
+  ENHANCED_TEACHER_DB.neisEnhanced.majorMenus.forEach(cat => {
+    context += `### ${cat.category}\n`;
+    cat.menus.forEach(m => {
+      context += `- ${m.path}: ${m.usage}\n`;
+    });
+  });
+
+  // 월별 보강 업무
+  context += '\n## 월별 보강 업무 (기존 누락분)\n';
+  Object.entries(ENHANCED_TEACHER_DB.monthlyTasksEnhanced.months).forEach(([month, data]) => {
+    context += `### ${(data as { title: string; tasks: Array<{ name: string; detail: string }> }).title}\n`;
+    (data as { title: string; tasks: Array<{ name: string; detail: string }> }).tasks.forEach(t => {
+      context += `- ${t.name}: ${t.detail}\n`;
+    });
   });
 
   return context;
