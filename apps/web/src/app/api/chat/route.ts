@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateAIContext } from '@/data/duties-knowledge-base';
 
-// Edge Runtime으로 변경 - Cold Start 제거로 훨씬 빠름
-export const runtime = 'edge';
-export const preferredRegion = ['icn1', 'hnd1']; // 한국/일본 리전 우선
+// Node.js Runtime - 환경변수 안정 접근
+export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 // 17개 시도교육청 정보 (Edge Runtime에서 사용 가능하도록 인라인)
 const EDUCATION_OFFICES: Record<string, {
@@ -405,7 +405,7 @@ export async function POST(request: NextRequest) {
     // Gemini 클라이언트 초기화
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash-lite',
       generationConfig: {
         temperature: 0.7,
         topP: 0.9,

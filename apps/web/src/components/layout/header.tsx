@@ -26,29 +26,44 @@ interface HeaderProps {
   onMenuClick?: () => void;
 }
 
-const notifications = [
-  {
-    id: '1',
-    title: '업무 마감 임박',
-    message: '3월 학교교육계획 수립이 3일 후 마감됩니다.',
-    time: '10분 전',
-    read: false,
-  },
-  {
-    id: '2',
-    title: '새 공문서 수신',
-    message: '교육청에서 새 공문이 도착했습니다.',
-    time: '1시간 전',
-    read: false,
-  },
-  {
-    id: '3',
-    title: '일정 알림',
-    message: '내일 오전 10시 교직원 회의가 있습니다.',
-    time: '2시간 전',
-    read: true,
-  },
-];
+// 현재 날짜 기반 동적 알림 생성
+function generateNotifications() {
+  const now = new Date();
+  const month = now.getMonth() + 1; // 1-12
+  const day = now.getDate();
+
+  const items: { id: string; title: string; message: string; time: string; read: boolean }[] = [];
+
+  // 2월 알림
+  if (month === 2) {
+    if (day <= 20) {
+      items.push({ id: '1', title: '학년말 성적 마감', message: '교과학습발달상황 및 행동특성 NEIS 입력 마감이 다가옵니다.', time: '오늘', read: false });
+    }
+    if (day <= 15) {
+      items.push({ id: '2', title: '졸업/수료식 준비', message: '졸업장·상장 출력, 생활기록부 최종 점검을 완료하세요.', time: '이번 주', read: false });
+    }
+    items.push({ id: '3', title: '학년말 업무 정리', message: '학급 물품 반납, 교실 정리, 인수인계 자료를 준비하세요.', time: '진행 중', read: false });
+    items.push({ id: '4', title: '3월 신학기 준비', message: '교육과정 편성, 학급경영계획, 교과서 수령 일정을 확인하세요.', time: '예정', read: true });
+  }
+  // 3월 알림
+  else if (month === 3) {
+    items.push({ id: '1', title: '학기초 필수 업무', message: 'NEIS 학급 편성, 교육과정 등록, 시간표 입력을 완료하세요.', time: '오늘', read: false });
+    items.push({ id: '2', title: '학부모 총회 준비', message: '학급경영계획 발표 자료와 가정통신문을 준비하세요.', time: '이번 주', read: false });
+    items.push({ id: '3', title: '안전점검의 날', message: '매월 4일 학교시설 안전점검 및 결과 보고가 필요합니다.', time: '매월 4일', read: true });
+  }
+  // 그 외 월
+  else {
+    items.push({ id: '1', title: '출석부 확인', message: '금일 출결 사항을 NEIS에 입력하세요.', time: '오늘', read: false });
+    if (day <= 4) {
+      items.push({ id: '2', title: '안전점검의 날', message: '매월 4일 학교시설 안전점검 및 결과 보고가 필요합니다.', time: `${month}월 4일`, read: false });
+    }
+    items.push({ id: '3', title: '월별 업무 확인', message: `${month}월 주요 업무 일정을 확인하세요.`, time: '이번 달', read: true });
+  }
+
+  return items;
+}
+
+const notifications = generateNotifications();
 
 export function Header({ title, onMenuClick }: HeaderProps) {
   const { theme, setTheme } = useTheme();
